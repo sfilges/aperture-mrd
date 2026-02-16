@@ -206,8 +206,10 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     mutect2_vcf          = FILTERMUTECTCALLS.out.vcf          // [meta, filtered.vcf.gz]
     mutect2_tbi          = FILTERMUTECTCALLS.out.tbi          // [meta, filtered.vcf.gz.tbi]
     mutect2_stats        = FILTERMUTECTCALLS.out.stats        // [meta, filteringStats.tsv]
-    strelka_snvs_vcf     = STRELKA_SOMATIC.out.vcf_snvs      // [meta, somatic.snvs.vcf.gz]
-    strelka_indels_vcf   = STRELKA_SOMATIC.out.vcf_indels    // [meta, somatic.indels.vcf.gz]
+    strelka_snvs_vcf     = STRELKA_SOMATIC.out.vcf_snvs      // [meta, somatic_snvs.vcf.gz]
+    strelka_snvs_tbi     = STRELKA_SOMATIC.out.vcf_snvs_tbi  // [meta, somatic_snvs.vcf.gz.tbi]
+    strelka_indels_vcf   = STRELKA_SOMATIC.out.vcf_indels    // [meta, somatic_indels.vcf.gz]
+    strelka_indels_tbi   = STRELKA_SOMATIC.out.vcf_indels_tbi // [meta, somatic_indels.vcf.gz.tbi]
     manta_sv_vcf         = MANTA_SOMATIC.out.somatic_sv_vcf  // [meta, somaticSV.vcf.gz]
     lofreq_vcf           = LOFREQ_SOMATIC.out.vcf             // [meta, *.vcf.gz]
     versions             = versions

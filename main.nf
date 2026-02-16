@@ -33,11 +33,7 @@ include { PREPROCESS_READS } from './subworkflows/preprocess_reads'
 include { MULTIQC } from './modules/multiqc/main'
 
 include { TN_SOMATIC_VARIANT_CALLING } from './subworkflows/tn_somatic_variant_calling'
-
-// Variant annotation
-
-
-// Variant merging & filtering
+include { CALLER_INTERSECTION } from './subworkflows/caller_intersection'
 
 
 /*
@@ -187,24 +183,24 @@ workflow {
         PREPARE_INTERVALS.out.intervals_bed_bgz_tbi_split,
     )
 
-    // VARIANT QC
+    //
+    // Caller intersection: keep variants with >=2/3 caller agreement
+    //
+    CALLER_INTERSECTION(
+        TN_SOMATIC_VARIANT_CALLING.out.mutect2_vcf,
+        TN_SOMATIC_VARIANT_CALLING.out.mutect2_tbi,
+        TN_SOMATIC_VARIANT_CALLING.out.strelka_snvs_vcf,
+        TN_SOMATIC_VARIANT_CALLING.out.strelka_indels_vcf,
+        TN_SOMATIC_VARIANT_CALLING.out.lofreq_vcf,
+        ch_fasta,
+        ch_fasta_fai,
+    )
 
-    // VARIANT ANNOTATION
+    ch_versions = ch_versions.mix(CALLER_INTERSECTION.out.versions)
 
-    // VARIANT MERGING & FILTERING
-
-    // 1. Intersect variants common betwen at least 2 callers
-
-    // 2. Apply blacklist filtering on intersected variants
-    // Maybe the lists should be merged into a single blacklist file?
-    // 2.1 ENCODE blacklist
-    // 2.2 gnomad blacklist
-    // 2.3 Repeat regions
-    // 2.4 Other blacklists
-
-
-
-    // 3. Apply additional filters
+    // TODO: Blacklist filtering on intersected variants (ENCODE, gnomAD common, repeats)
+    // TODO: CNA calling with CNVkit
+    // TODO: VEP annotation
 
 
 

@@ -1,18 +1,16 @@
-process BCFTOOLS_ISEC {
+process BCFTOOLS_NORM {
     tag "$meta.id"
     label 'process_single'
 
     container 'biocontainers/bcftools:1.21--h8b25389_1'
 
-    publishDir "${params.outdir}/${workflow.runName}/variant_calling/intersection/${meta.id}", mode: params.publish_dir_mode
-
     input:
-    tuple val(meta), path(vcfs), path(tbis)
-    val nrec  // minimum caller agreement, e.g., "+2" for >=2/3
+    tuple val(meta), path(vcf)
+    tuple val(meta2), path(fasta)
 
     output:
-    tuple val(meta), path("*.isec.vcf.gz")    , emit: vcf
-    tuple val(meta), path("*.isec.vcf.gz.tbi"), emit: tbi
+    tuple val(meta), path("*.norm.vcf.gz")    , emit: vcf
+    tuple val(meta), path("*.norm.vcf.gz.tbi"), emit: tbi
     path "versions.yml"                       , emit: versions
 
     when:
@@ -22,14 +20,14 @@ process BCFTOOLS_ISEC {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    bcftools isec \\
-        -n ${nrec} \\
-        -w 1 \\
-        -Oz -o ${prefix}.isec.vcf.gz \\
+    bcftools norm \\
+        -m -both \\
+        -f $fasta \\
         $args \\
-        ${vcfs.join(' ')}
+        -Oz -o ${prefix}.norm.vcf.gz \\
+        $vcf
 
-    tabix -p vcf ${prefix}.isec.vcf.gz
+    tabix -p vcf ${prefix}.norm.vcf.gz
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -40,8 +38,8 @@ process BCFTOOLS_ISEC {
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.isec.vcf.gz
-    touch ${prefix}.isec.vcf.gz.tbi
+    touch ${prefix}.norm.vcf.gz
+    touch ${prefix}.norm.vcf.gz.tbi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

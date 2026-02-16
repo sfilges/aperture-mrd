@@ -1,19 +1,16 @@
-process BCFTOOLS_ISEC {
+process BCFTOOLS_CONCAT {
     tag "$meta.id"
     label 'process_single'
 
     container 'biocontainers/bcftools:1.21--h8b25389_1'
 
-    publishDir "${params.outdir}/${workflow.runName}/variant_calling/intersection/${meta.id}", mode: params.publish_dir_mode
-
     input:
-    tuple val(meta), path(vcfs), path(tbis)
-    val nrec  // minimum caller agreement, e.g., "+2" for >=2/3
+    tuple val(meta), path(vcfs)
 
     output:
-    tuple val(meta), path("*.isec.vcf.gz")    , emit: vcf
-    tuple val(meta), path("*.isec.vcf.gz.tbi"), emit: tbi
-    path "versions.yml"                       , emit: versions
+    tuple val(meta), path("*.concat.vcf.gz")    , emit: vcf
+    tuple val(meta), path("*.concat.vcf.gz.tbi"), emit: tbi
+    path "versions.yml"                         , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -22,14 +19,18 @@ process BCFTOOLS_ISEC {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    bcftools isec \\
-        -n ${nrec} \\
-        -w 1 \\
-        -Oz -o ${prefix}.isec.vcf.gz \\
-        $args \\
-        ${vcfs.join(' ')}
+    # Index inputs for overlap-aware concat
+    for vcf in $vcfs; do
+        bcftools index --tbi \$vcf
+    done
 
-    tabix -p vcf ${prefix}.isec.vcf.gz
+    bcftools concat \\
+        -a \\
+        $args \\
+        $vcfs \\
+        -Ou | bcftools sort -Oz -o ${prefix}.concat.vcf.gz
+
+    tabix -p vcf ${prefix}.concat.vcf.gz
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -40,8 +41,8 @@ process BCFTOOLS_ISEC {
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.isec.vcf.gz
-    touch ${prefix}.isec.vcf.gz.tbi
+    touch ${prefix}.concat.vcf.gz
+    touch ${prefix}.concat.vcf.gz.tbi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
