@@ -12,32 +12,33 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { BEDTOOLS_SPLIT }  from '../../modules/bedtools/split/main'
-include { TABIX_BGZIPTABIX as TABIX_ALL }   from '../../modules/tabix/tabix_bgzip/main'
+include { BEDTOOLS_SPLIT } from '../../modules/bedtools/split/main'
+include { TABIX_BGZIPTABIX as TABIX_ALL } from '../../modules/tabix/tabix_bgzip/main'
 include { TABIX_BGZIPTABIX as TABIX_SPLIT } from '../../modules/tabix/tabix_bgzip/main'
 
 workflow PREPARE_INTERVALS {
-
     take:
-    fai           // path: genome .fai index
+    fai // path: genome .fai index
     intervals_bed // path: BED file of calling regions (or empty)
-    target_bed    // path: optional target BED (panel mode, unused for WGS)
+    target_bed // path: optional target BED (panel mode, unused for WGS)
 
     main:
 
-    ch_versions = Channel.empty()
+    ch_versions = channel.empty()
 
     // Create the intervals channel from the provided BED file
     // If no intervals file is provided, create one from the .fai
     if (intervals_bed) {
-        ch_intervals_bed = Channel.value(
+        ch_intervals_bed = channel.value(
             [["id": "intervals"], file(intervals_bed, checkIfExists: true)]
         )
-    } else {
+    }
+    else {
         // Generate a BED from the .fai covering all contigs
-        ch_intervals_bed = Channel.fromPath(fai, checkIfExists: true)
+        ch_intervals_bed = channel.fromPath(fai, checkIfExists: true)
             .map { fai_file ->
-                def bed_content = fai_file.readLines()
+                def bed_content = fai_file
+                    .readLines()
                     .collect { line ->
                         def parts = line.split('\t')
                         "${parts[0]}\t0\t${parts[1]}"
@@ -61,17 +62,16 @@ workflow PREPARE_INTERVALS {
     // Split the BED into N chunks for scatter/gather
     BEDTOOLS_SPLIT(
         ch_intervals_bed,
-        params.n_interval_splits ?: 10
+        params.n_interval_splits ?: 10,
     )
     ch_versions = ch_versions.mix(BEDTOOLS_SPLIT.out.versions)
 
     // Flatten the split BEDs into individual [meta, bed] tuples
-    intervals_bed_split = BEDTOOLS_SPLIT.out.beds
-        .flatMap { meta, beds ->
-            beds instanceof List
-                ? beds.collect { bed -> [["id": bed.baseName], bed] }
-                : [[["id": beds.baseName], beds]]
-        }
+    intervals_bed_split = BEDTOOLS_SPLIT.out.beds.flatMap { meta, beds ->
+        beds instanceof List
+            ? beds.collect { bed -> [["id": bed.baseName], bed] }
+            : [[["id": beds.baseName], beds]]
+    }
 
     // bgzip + tabix each split BED for Strelka2
     TABIX_SPLIT(intervals_bed_split)
@@ -80,9 +80,9 @@ workflow PREPARE_INTERVALS {
     intervals_bed_bgz_tbi_split = TABIX_SPLIT.out.gz_tbi
 
     emit:
-    intervals_bed_all           = intervals_bed_all
-    intervals_bed_bgz_tbi_all   = intervals_bed_bgz_tbi_all
-    intervals_bed_split         = intervals_bed_split
+    intervals_bed_all = intervals_bed_all
+    intervals_bed_bgz_tbi_all = intervals_bed_bgz_tbi_all
+    intervals_bed_split = intervals_bed_split
     intervals_bed_bgz_tbi_split = intervals_bed_bgz_tbi_split
-    versions                    = ch_versions
+    versions = ch_versions
 }
