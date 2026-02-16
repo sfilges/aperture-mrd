@@ -34,6 +34,7 @@ include { MULTIQC } from './modules/multiqc/main'
 
 include { TN_SOMATIC_VARIANT_CALLING } from './subworkflows/tn_somatic_variant_calling'
 include { CALLER_INTERSECTION } from './subworkflows/caller_intersection'
+include { BLACKLIST_FILTER } from './subworkflows/blacklist_filter'
 
 
 /*
@@ -198,9 +199,29 @@ workflow {
 
     ch_versions = ch_versions.mix(CALLER_INTERSECTION.out.versions)
 
-    // TODO: Blacklist filtering on intersected variants (ENCODE, gnomAD common, repeats)
+    //
+    // Blacklist filtering + VEP annotation + gnomAD AF filter
+    //
+    ch_blacklists = Channel.fromPath([
+        params.encode_blacklist,
+        params.centromeres,
+        params.simple_repeats,
+    ]).collect()
+
+    BLACKLIST_FILTER(
+        CALLER_INTERSECTION.out.compendium_vcf,
+        CALLER_INTERSECTION.out.compendium_tbi,
+        ch_fasta,
+        ch_fasta_fai,
+        params.vep_genome,
+        params.vep_species,
+        params.vep_cache_version,
+        params.vep_cache ? file(params.vep_cache) : [],
+        ch_blacklists,
+    )
+    ch_versions = ch_versions.mix(BLACKLIST_FILTER.out.versions)
+
     // TODO: CNA calling with CNVkit
-    // TODO: VEP annotation
 
 
 
