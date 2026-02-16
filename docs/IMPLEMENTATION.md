@@ -92,7 +92,7 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 ### Core Pipeline Tools
 
 | Role | Tool | Version | License | Notes |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Read trimming & QC | **fastp** | 0.23.4 | MIT | Handles cfDNA adapter contamination; `--overlap_len_require` for short inserts |
 | Alignment | **BWA-MEM2** | 2.2.1 | MIT | Drop-in BWA replacement, 2-3x faster |
 | Duplicate marking | **GATK4 MarkDuplicates** | 4.6.x | MIT | Outputs CRAM directly |
@@ -103,7 +103,7 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 ### Somatic Variant Calling (Stage 1)
 
 | Role | Tool | License | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | SNV caller 1 | **GATK4 Mutect2** | MIT | Gold standard; scatter/gather with intervals |
 | SNV caller 2 | **Strelka2** | GPL-3.0 | Requires Manta for candidate indels |
 | SNV caller 3 | **LoFreq** | MIT | High sensitivity at low VAF |
@@ -118,7 +118,7 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 ### Sample QC
 
 | Role | Tool | License | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Sample concordance | **Picard CrosscheckFingerprints** | MIT | Verifies tumor/normal/plasma identity match |
 | Alignment QC | **samtools stats + mosdepth** | MIT | Alignment and coverage metrics |
 | Report aggregation | **MultiQC** | GPL-3.0 | Aggregate all QC reports |
@@ -126,7 +126,7 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 ### MRDetect Custom Scripts (Stage 2)
 
 | Script | Dependencies | License | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `extract_candidates.py` | pysam | MIT/BSD | Query compendium loci in plasma BAM |
 | `svm_filter.py` | scikit-learn | BSD-3 | Read-centric error suppression (5 features: VBQ, MRBQ, PIR, R1/R2 concordance, MapQ) |
 | `calc_snv_score.py` | numpy, scipy | BSD-3 | Binomial model → tumor fraction + z-score |
@@ -144,7 +144,7 @@ Tools with GPL-3.0 licenses (Strelka2, Manta, ichorCNA, MultiQC) allow commercia
 The samplesheet defines sample relationships via the `status` field:
 
 | Status | Meaning | Used in |
-|---|---|---|
+| --- | --- | --- |
 | `0` | Normal / germline (PBMC) | Stage 1 + QC |
 | `1` | Tumor tissue | Stage 1 |
 | `2` | Plasma cfDNA | Stage 2 |
@@ -167,7 +167,7 @@ Control plasma samples for reference panel building use a separate samplesheet v
 
 Generates the patient-specific mutational compendium from matched tumor/normal WGS.
 
-```
+```text
 Tumor FASTQ + Normal FASTQ
         │
         ▼
@@ -205,32 +205,39 @@ Tumor FASTQ + Normal FASTQ
 #### Somatic SNV Calling Details
 
 **Mutect2 (GATK4):**
+
 - Scatter across genome intervals for parallelism (`params.n_interval_splits`)
 - Post-processing: MergeVcfs → LearnReadOrientationModel → GetPileupSummaries (tumor + normal) → CalculateContamination → FilterMutectCalls
 - Filter: PASS variants only
 
 **Strelka2:**
+
 - Requires Manta candidate indels as input
 - Scatter across bgzipped/tabixed interval BEDs
 - Output: separate SNV and indel VCFs, merged before intersection
 
 **LoFreq:**
+
 - High sensitivity at low VAF (important for compendium completeness)
 - Runs on full genome (no scatter needed; internally parallel)
 
 **Intersection logic:**
+
 1. Normalize all VCFs with `bcftools norm` (left-align, split multi-allelic)
 2. Run `bcftools isec` requiring ≥2 of 3 callers to agree
 3. Output: high-confidence SNV set
 
 **Blacklist filtering:**
+
 Remove variants overlapping:
+
 - ENCODE blacklist v2 (hg38) — problematic mappability regions
 - gnomAD common variants (population AF > 0.01)
 - Segmental duplications and repeat regions (UCSC)
 - (Optional) Panel-of-normals artifacts from control cohort
 
 **CNA calling (CNVkit):**
+
 - WGS mode: `cnvkit.py batch tumor.bam --normal normal.bam --method wgs`
 - Segment classification per Zviran et al.:
   - Amplification: log2 ratio > 0.2
@@ -242,7 +249,7 @@ Remove variants overlapping:
 
 Detects ctDNA in plasma by querying the patient-specific compendium. This is **not** variant calling — it is locus-specific signal integration across thousands of sites.
 
-```
+```text
 Plasma cfDNA FASTQ + Compendium (from Stage 1)
         │
         ▼
@@ -276,6 +283,7 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1)
 #### MRDetect-SNV Details
 
 **EXTRACT_CANDIDATES** (custom pysam script):
+
 - Input: plasma CRAM + `patient_snv_compendium.vcf`
 - For each compendium site, extract every read covering that position
 - No VAF filtering — even single supporting reads are informative
@@ -283,6 +291,7 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1)
 - Output: per-site read data with alignment features
 
 **SVM_FILTER** (custom scikit-learn script):
+
 - Read-centric classification (not locus-centric like standard callers)
 - 5 features per read: Variant Base Quality (VBQ), Mean Read Base Quality (MRBQ), Position in Read (PIR), R1/R2 paired-end concordance, Mapping Quality
 - Linear SVM (C=1.0, hinge loss, L2 regularization)
@@ -291,6 +300,7 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1)
 - Error reduction: median 14-fold (21-fold with paired-end concordance)
 
 **CALC_SNV_SCORE** (custom script):
+
 - Detected variants M follow binomial distribution over N independent trials
 - `M = N(1 - (1 - TF)^cov) + μ*R` (Eq. 4 from paper)
 - Tumor fraction: `TF = 1 - (1 - [M - μ*R]/N)^(1/cov)` (Eq. 5)
@@ -300,17 +310,20 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1)
 #### MRDetect-CNA Details
 
 **BUILD_PLASMA_REFERENCE:**
+
 - From user-provided healthy donor plasma WGS, or a precomputed reference
 - Downsample + merge control samples to 25x coverage (n≥8)
 - Robust z-score normalization of the reference coverage profile
 - Critical: must use plasma reference (not PBMC), because cfDNA has distinct coverage biases from DNA degradation and chromatin accessibility
 
 **NORMALIZE_COVERAGE:**
+
 - Calculate coverage in non-overlapping 500bp bins (GATK DepthOfCoverage or custom)
 - Normalize: divide each bin by sample average, then z-score against plasma reference using MAD
 - Remove genomic bins with extreme coverage (>abs(1.5*MAD))
 
 **INTEGRATE_CNA_SIGNAL** (Eq. 6 from paper):
+
 - For each 500bp bin overlapping patient CNA segments:
   `CNA_signal = Σ [(P(i) - N(i)) * sign(T(i) - N(i))]`
 - Where P(i) = plasma coverage, N(i) = reference coverage, sign = CNA directionality (+1 amp, -1 del)
@@ -320,6 +333,7 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1)
 #### Fragment Size Analysis
 
 **FRAGMENT_KDE:**
+
 - cfDNA fragments from tumor are shorter than those from hematopoietic cells
 - Joint KDE (kernel density estimation) trained on tumor-derived vs normal cfDNA fragment sizes
 - Training data: PDX samples (mouse-derived tumor cfDNA vs human normal cfDNA)
