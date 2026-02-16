@@ -50,6 +50,7 @@ process GATK4_MUTECT2 {
         $interval_command \\
         ${gr_command} \\
         ${pon_command} \\
+        --f1r2-tar-gz ${prefix}.f1r2.tar.gz \\
         --dont-use-soft-clipped-bases \\
         --tmp-dir . \\
         $args

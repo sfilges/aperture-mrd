@@ -12,7 +12,7 @@ process GATK4_CALCULATECONTAMINATION {
 
     output:
     tuple val(meta), path('*.contamination.table'), emit: contamination
-    tuple val(meta), path('*.segmentation.table') , emit: segmentation, optional:true
+    tuple val(meta), path('*.segmentation.table') , emit: segmentation
     path "versions.yml"                           , emit: versions
 
     when:
@@ -34,6 +34,7 @@ process GATK4_CALCULATECONTAMINATION {
         CalculateContamination \\
         --input $pileup \\
         --output ${prefix}.contamination.table \\
+        --tumor-segmentation ${prefix}.segmentation.table \\
         $matched_command \\
         --tmp-dir . \\
         $args

@@ -23,6 +23,7 @@ process GATK4_FILTERMUTECTCALLS {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
 
+    def stats_command           = stats           ? "--stats $stats"                                                             : ''
     def orientationbias_command = orientationbias ? orientationbias.collect{"--orientation-bias-artifact-priors $it"}.join(' ') : ''
     def segmentation_command    = segmentation    ? segmentation.collect{"--tumor-segmentation $it"}.join(' ')                  : ''
     def estimate_command        = estimate        ? " --contamination-estimate ${estimate} "                                    : ''
@@ -40,6 +41,7 @@ process GATK4_FILTERMUTECTCALLS {
         --variant $vcf \\
         --output ${prefix}.vcf.gz \\
         --reference $fasta \\
+        $stats_command \\
         $orientationbias_command \\
         $segmentation_command \\
         $estimate_command \\
