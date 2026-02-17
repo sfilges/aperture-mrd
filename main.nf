@@ -185,13 +185,12 @@ workflow {
     )
 
     //
-    // Caller intersection: keep variants with >=2/3 caller agreement
+    // Caller intersection: keep SNVs with >=2/3 caller agreement
     //
     CALLER_INTERSECTION(
         TN_SOMATIC_VARIANT_CALLING.out.mutect2_vcf,
         TN_SOMATIC_VARIANT_CALLING.out.mutect2_tbi,
         TN_SOMATIC_VARIANT_CALLING.out.strelka_snvs_vcf,
-        TN_SOMATIC_VARIANT_CALLING.out.strelka_indels_vcf,
         TN_SOMATIC_VARIANT_CALLING.out.lofreq_vcf,
         ch_fasta,
         ch_fasta_fai,
@@ -200,23 +199,22 @@ workflow {
     ch_versions = ch_versions.mix(CALLER_INTERSECTION.out.versions)
 
     //
-    // Blacklist filtering + VEP annotation + gnomAD AF filter
+    // Blacklist filtering + gnomAD common variant exclusion
     //
-    ch_blacklists = Channel.fromPath([
-        params.encode_blacklist,
-        params.centromeres,
-        params.simple_repeats,
-    ]).collect()
+    ch_blacklists = channel.fromPath(
+            [
+                params.encode_blacklist,
+                params.centromeres,
+                params.simple_repeats,
+            ]
+        )
+        .collect()
 
     BLACKLIST_FILTER(
         CALLER_INTERSECTION.out.compendium_vcf,
         CALLER_INTERSECTION.out.compendium_tbi,
-        ch_fasta,
-        ch_fasta_fai,
-        params.vep_genome,
-        params.vep_species,
-        params.vep_cache_version,
-        params.vep_cache ? file(params.vep_cache) : [],
+        germline_resource,
+        germline_resource_tbi,
         ch_blacklists,
     )
     ch_versions = ch_versions.mix(BLACKLIST_FILTER.out.versions)

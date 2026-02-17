@@ -6,7 +6,7 @@ Aperture-MRD is a Nextflow pipeline for ultrasensitive detection of circulating 
 
 The pipeline operates in two stages:
 
-1. **Stage 1 — Build Compendium:** Generate a high-confidence, patient-specific mutational compendium (SNVs + CNAs) from matched tumor/normal WGS using multi-caller ensemble variant calling.
+1. **Stage 1 — Build Compendium:** Generate a high-confidence, patient-specific mutational compendium (SNVs + CNAs) from matched tumor/normal WGS using multi-caller ensemble variant calling. Only SNVs are included in the compendium; indels are excluded as they are too noisy for MRDetect integration.
 2. **Stage 2 — MRDetect Integration:** Query the compendium loci in plasma cfDNA WGS to detect and quantify ctDNA via genome-wide mutational integration, achieving tumor fraction sensitivity down to 10⁻⁵.
 
 The pipeline supports a **tumor-informed** mode (compendium generated _de novo_ or provided as VCF) and will be extended with a **tumor-agnostic** mode in future releases.
@@ -112,8 +112,9 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 | VCF normalization | **bcftools norm** | MIT | Left-align variants before intersection |
 | CNA calling | **CNVkit** | Apache 2.0 | WGS mode; actively maintained (v0.9.13, 2026) |
 | cfDNA CNA | **ichorCNA** | GPL-3.0 | Purpose-built for cfDNA; GavinHaLab fork (v0.6.0) |
-| Blacklist filtering | **bedtools subtract** | MIT | ENCODE + gnomAD + repeats |
-| Annotation | **Ensembl VEP** | Apache 2.0 | Variant consequence annotation |
+| Blacklist filtering | **bedtools subtract** | MIT | ENCODE + repeats |
+| gnomAD exclusion | **bcftools isec** | MIT | Remove common variants (af-only-gnomad.hg38.vcf.gz) |
+| Annotation | **Ensembl VEP** | Apache 2.0 | Variant consequence annotation (separate workflow) |
 
 ### Sample QC
 
@@ -183,18 +184,19 @@ Tumor FASTQ + Normal FASTQ
                                    │
                                    ▼
                              CALLER_INTERSECTION
-                             bcftools norm → bcftools isec (≥2/3)
+                             bcftools norm → bcftools isec (≥2/3, SNVs only)
                                    │
                                    ▼
                              BLACKLIST_FILTER
-                             bedtools subtract (ENCODE, gnomAD AF>0.01, repeats)
+                             bedtools subtract (ENCODE, centromeres, repeats)
+                             bcftools isec --complement (gnomAD af-only)
                                    │
                                    ▼
                              SOMATIC_CNA
                              CNVkit batch (tumor vs normal, WGS mode)
                                    │
                                    ▼
-                             ANNOTATION (VEP, optional)
+                             ANNOTATION (VEP, separate workflow)
                                    │
                                    ▼
                              OUTPUT:
@@ -223,18 +225,23 @@ Tumor FASTQ + Normal FASTQ
 
 **Intersection logic:**
 
-1. Normalize all VCFs with `bcftools norm` (left-align, split multi-allelic)
+1. Normalize all SNV VCFs with `bcftools norm` (left-align, split multi-allelic)
 2. Run `bcftools isec` requiring ≥2 of 3 callers to agree
-3. Output: high-confidence SNV set
+3. Indels are excluded — only SNVs enter the intersection
+4. Output: high-confidence SNV set
 
 **Blacklist filtering:**
 
 Remove variants overlapping:
 
 - ENCODE blacklist v2 (hg38) — problematic mappability regions
-- gnomAD common variants (population AF > 0.01)
+- Centromeric regions
 - Segmental duplications and repeat regions (UCSC)
 - (Optional) Panel-of-normals artifacts from control cohort
+
+Then exclude common variants present in gnomAD (`af-only-gnomad.hg38.vcf.gz`) via `bcftools isec --complement`. This removes all population variants regardless of allele frequency, which is appropriate for MRD where any germline/population variant is noise.
+
+> **Note:** VEP annotation is deferred to a separate annotation workflow to reduce computational cost during compendium building.
 
 **CNA calling (CNVkit):**
 
