@@ -53,7 +53,7 @@ workflow BLACKLIST_FILTER {
 
     BCFTOOLS_VIEW(
         ch_view_input,
-        BEDTOOLS_MERGE.out.bed.map { meta, bed -> bed },
+        BEDTOOLS_MERGE.out.bed.map { _meta, bed -> bed },
     )
     ch_versions = ch_versions.mix(BCFTOOLS_VIEW.out.versions)
 

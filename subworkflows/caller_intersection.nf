@@ -26,11 +26,11 @@ include { BCFTOOLS_ISEC } from '../modules/bcftools/isec/main'
 workflow CALLER_INTERSECTION {
     take:
     mutect2_vcf // [meta, filtered.vcf.gz]
-    mutect2_tbi // [meta, filtered.vcf.gz.tbi]
+    _mutect2_tbi // [meta, filtered.vcf.gz.tbi]
     strelka_snvs_vcf // [meta, somatic_snvs.vcf.gz]
     lofreq_vcf // [meta, [*.vcf.gz]] — multiple LoFreq output VCFs
     ch_fasta // [meta, fasta]
-    ch_fasta_fai // [meta, fai]
+    _ch_fasta_fai // [meta, fai]
 
     main:
     ch_versions = channel.empty()
