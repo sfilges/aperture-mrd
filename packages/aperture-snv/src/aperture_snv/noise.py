@@ -129,9 +129,7 @@ def build_noise_profile(
         )
         candidates = resolve_paired_end_concordance(candidates)
 
-        detected, total_reads, _total_sites = compute_noise_for_control(
-            candidates, svm_model
-        )
+        detected, total_reads, _total_sites = compute_noise_for_control(candidates, svm_model)
 
         det_rate = detected / total_reads if total_reads > 0 else 0.0
         noise_per_read = detected / total_reads if total_reads > 0 else 0.0

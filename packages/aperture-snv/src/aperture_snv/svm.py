@@ -130,9 +130,7 @@ def train_svm(
         Trained Pipeline ready for prediction.
     """
     X = np.vstack([positive_features, negative_features])
-    y = np.concatenate(
-        [np.ones(len(positive_features)), np.zeros(len(negative_features))]
-    )
+    y = np.concatenate([np.ones(len(positive_features)), np.zeros(len(negative_features))])
     pipeline = build_svm_pipeline(C=C)
     pipeline.fit(X, y)
     return pipeline

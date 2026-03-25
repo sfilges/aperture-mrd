@@ -182,9 +182,7 @@ def extract_all_candidates(
     sites = load_compendium(compendium_path)
     results: dict[CompendiumSite, list[CandidateRead]] = {}
 
-    with pysam.AlignmentFile(
-        str(cram_path), reference_filename=str(reference_path)
-    ) as aln:
+    with pysam.AlignmentFile(str(cram_path), reference_filename=str(reference_path)) as aln:
         for site in sites:
             candidates = list(
                 extract_candidates_at_site(aln, site, min_mapq=min_mapq, min_bq=min_bq)
@@ -226,15 +224,11 @@ def resolve_paired_end_concordance(
                 both_ref = all(r.read_base == site.ref for r in pair)
                 concordant = both_support or both_ref
                 for r in pair:
-                    updated_reads.append(
-                        dataclasses.replace(r, is_concordant=concordant)
-                    )
+                    updated_reads.append(dataclasses.replace(r, is_concordant=concordant))
             else:
                 # Only one mate covers the site — concordance unknown
                 for r in pair:
-                    updated_reads.append(
-                        dataclasses.replace(r, is_concordant=None)
-                    )
+                    updated_reads.append(dataclasses.replace(r, is_concordant=None))
 
         resolved[site] = updated_reads
 

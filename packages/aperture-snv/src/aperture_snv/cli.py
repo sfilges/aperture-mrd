@@ -57,20 +57,44 @@ def extract(
 
     with open(output, "w", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
-        writer.writerow([
-            "chrom", "pos", "ref", "alt", "read_name", "read_base",
-            "vbq", "mrbq", "pir", "mapq", "is_read1",
-            "is_concordant", "is_proper_pair", "insert_size",
-        ])
+        writer.writerow(
+            [
+                "chrom",
+                "pos",
+                "ref",
+                "alt",
+                "read_name",
+                "read_base",
+                "vbq",
+                "mrbq",
+                "pir",
+                "mapq",
+                "is_read1",
+                "is_concordant",
+                "is_proper_pair",
+                "insert_size",
+            ]
+        )
         for _site, reads in candidates.items():
             for r in reads:
-                writer.writerow([
-                    r.chrom, r.pos, r.ref, r.alt, r.read_name, r.read_base,
-                    r.vbq, f"{r.mrbq:.2f}", f"{r.pir:.4f}", r.mapq,
-                    int(r.is_read1),
-                    "" if r.is_concordant is None else int(r.is_concordant),
-                    int(r.is_proper_pair), r.insert_size,
-                ])
+                writer.writerow(
+                    [
+                        r.chrom,
+                        r.pos,
+                        r.ref,
+                        r.alt,
+                        r.read_name,
+                        r.read_base,
+                        r.vbq,
+                        f"{r.mrbq:.2f}",
+                        f"{r.pir:.4f}",
+                        r.mapq,
+                        int(r.is_read1),
+                        "" if r.is_concordant is None else int(r.is_concordant),
+                        int(r.is_proper_pair),
+                        r.insert_size,
+                    ]
+                )
 
     n_sites = len(candidates)
     n_reads = sum(len(reads) for reads in candidates.values())
@@ -101,16 +125,18 @@ def filter(
             logger.warning("No candidate reads in input file")
             return
 
-        features = np.array([
+        features = np.array(
             [
-                float(r["vbq"]),
-                float(r["mrbq"]),
-                float(r["pir"]),
-                0.5 if r["is_concordant"] == "" else float(r["is_concordant"]),
-                float(r["mapq"]),
+                [
+                    float(r["vbq"]),
+                    float(r["mrbq"]),
+                    float(r["pir"]),
+                    0.5 if r["is_concordant"] == "" else float(r["is_concordant"]),
+                    float(r["mapq"]),
+                ]
+                for r in rows
             ]
-            for r in rows
-        ])
+        )
 
         predictions = svm_model.predict(features)
         n_passed = 0
@@ -201,7 +227,8 @@ def noise(
 
     logger.info(
         "Building noise profile from {} control samples against {}",
-        len(controls), compendium,
+        len(controls),
+        compendium,
     )
 
     svm_model = load_model(model)
@@ -226,5 +253,8 @@ def noise(
 
     logger.success(
         "Noise profile: μ={:.2e}, σ={:.2e}, n={} controls → {}",
-        profile.noise_mean, profile.noise_std, profile.n_controls, output,
+        profile.noise_mean,
+        profile.noise_std,
+        profile.n_controls,
+        output,
     )
