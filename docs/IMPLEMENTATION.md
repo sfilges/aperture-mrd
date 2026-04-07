@@ -61,6 +61,7 @@ Aperture-MRD/
 ├── modules/                         # Atomic processes — off-the-shelf tools (DSL2)
 │   ├── bwamem2/                     # BWA-MEM2 alignment
 │   ├── fastp/                       # Read trimming & QC
+│   ├── fgumi/                       # UMI processing (extract, group, consensus, filter)
 │   ├── gatk4/                       # GATK4 suite (MarkDup, BQSR, Mutect2, etc.)
 │   ├── samtools/                    # SAM/BAM/CRAM utilities
 │   ├── bcftools/                    # VCF manipulation (isec, norm)
@@ -119,8 +120,9 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 | Role | Tool | Version | License | Notes |
 | --- | --- | --- | --- | --- |
 | Read trimming & QC | **fastp** | 0.23.4 | MIT | Handles cfDNA adapter contamination; `--overlap_len_require` for short inserts |
+| UMI processing | **fgumi** | latest | MIT | Rust reimplementation of fgbio; UMI extraction, grouping, consensus calling |
 | Alignment | **BWA-MEM2** | 2.2.1 | MIT | Drop-in BWA replacement, 2-3x faster |
-| Duplicate marking | **GATK4 MarkDuplicates** | 4.6.x | MIT | Outputs CRAM directly |
+| Duplicate marking | **GATK4 MarkDuplicates** | 4.6.x | MIT | Non-UMI samples only; UMI samples use fgumi consensus deduplication |
 | Base recalibration | **GATK4 BQSR** | 4.6.x | MIT | BaseRecalibrator + ApplyBQSR |
 | BAM/CRAM handling | **samtools** | 1.21 | MIT | Index, stats, view, convert |
 | Depth of coverage | **mosdepth** | 0.3.x | MIT | Fast WGS coverage metrics |
@@ -157,6 +159,37 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 | `aperture-cnv` | 1→2 | numpy, scipy, scikit-learn | Coverage normalization, CNA signal integration, rPCA denoising, BAF, entropy |
 | `aperture-fragment` | 1→2 | scipy, numpy | Fragment size KDE, end motif profiling, fragment entropy |
 | `aperture-detect` | 1→2 | numpy, scipy | Score integration (Stouffer's method), detection calls, reporting |
+
+### UMI Consensus Calling (fgumi)
+
+When input libraries contain UMI-tagged reads, the pipeline uses **fgumi** (fulcrumgenomics/fgumi) for UMI extraction, grouping, and consensus calling. fgumi is a Rust reimplementation of fgbio targeting 100% result identity with significantly improved performance, making it well-suited for WGS-scale data.
+
+**Workflow (UMI-tagged samples):**
+
+```text
+fastp (trim adapters, retain UMI)
+  → fgumi extract (annotate reads with UMI from FASTQ header or inline bases)
+  → BWA-MEM2 (align to reference)
+  → fgumi group (cluster aligned reads by UMI + mapping position)
+  → fgumi simplex / duplex (generate consensus reads per UMI family)
+  → fgumi filter (min reads per family, min base quality)
+  → BWA-MEM2 (re-align consensus reads)
+  → BQSR → CRAM
+```
+
+**Workflow (non-UMI samples):**
+
+```text
+fastp → BWA-MEM2 → GATK4 MarkDuplicates → BQSR → CRAM
+```
+
+**Key design points:**
+
+- UMI consensus calling **replaces** MarkDuplicates for UMI-tagged libraries — grouping by UMI inherently deduplicates, and consensus calling suppresses sequencing errors below the per-read error floor
+- The pipeline auto-detects UMI presence via a samplesheet column (TBD) or parameter flag, branching preprocessing accordingly
+- Consensus reads improve both compendium specificity (Stage 1) and plasma signal-to-noise (Stage 2), as error suppression is applied before variant calling or feature extraction
+- Re-alignment of consensus reads is required because consensus sequences may differ from any individual input read
+- Reference implementation: nf-core/fastquorum (DSL2 pipeline wrapping fgbio best practices) serves as the workflow design reference
 
 ### Licensing Note
 
@@ -195,7 +228,7 @@ Tumor FASTQ + Normal (buffy coat) FASTQ
         │
         ▼
   PREPROCESS_READS (shared subworkflow)
-  fastp → BWA-MEM2 → MarkDuplicates → BQSR → CRAM
+  fastp → fgumi extract (if UMI) → BWA-MEM2 → fgumi group/consensus (if UMI) | MarkDuplicates (if no UMI) → BQSR → CRAM
         │
         ├──────────────────────────┐
         ▼                          ▼
@@ -283,7 +316,7 @@ Plasma cfDNA FASTQ + Compendium (from Stage 1) + Normal (buffy coat) CRAM
         │
         ▼
   PREPROCESS_READS (cfDNA-optimized fastp params)
-  fastp[cfDNA] → BWA-MEM2 → MarkDuplicates → BQSR → CRAM
+  fastp[cfDNA] → fgumi extract (if UMI) → BWA-MEM2 → fgumi group/consensus (if UMI) | MarkDuplicates (if no UMI) → BQSR → CRAM
         │
         ▼
   SAMPLE_CONCORDANCE (plasma vs tumor/normal)
