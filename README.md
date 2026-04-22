@@ -1,20 +1,20 @@
 # Aperture-MRD
 
-Aperture-MRD is a Nextflow pipeline for ultrasensitive detection of circulating tumor DNA (ctDNA) from whole genome sequencing (WGS) data, implementing the MRDetect methodology (Zviran et al., 2020).
+Aperture-MRD is a Nextflow pipeline for ultrasensitive detection of circulating tumor DNA (ctDNA) from whole genome sequencing (WGS) data, inspired by MRDetect (Zviran et al., 2020).
 
 ## Overview
 
 The pipeline operates in two primary stages:
 
-1.  **Stage 1 — Build Compendium:** Generate a high-confidence, patient-specific mutational compendium (SNVs + CNAs) from matched tumor/normal WGS using a multi-caller ensemble (Mutect2, Strelka2, LoFreq).
-2.  **Stage 2 — MRDetect Integration:** Query the compendium loci in plasma cfDNA WGS to detect and quantify ctDNA via genome-wide mutational integration, achieving tumor fraction sensitivity down to 10⁻⁵.
+1. **Stage 1 — Build Compendium:** Generate a high-confidence, patient-specific mutational compendium (SNVs + CNAs) from matched tumor/normal WGS using a multi-caller ensemble (Mutect2, Strelka2, LoFreq).
+2. **Stage 2 — MRDetect Integration:** Query the compendium loci in plasma cfDNA WGS to detect and quantify ctDNA via genome-wide mutational integration, achieving tumor fraction sensitivity down to 10⁻⁵.
 
 ## Quick Start
 
 ### Prerequisites
 
-*   Nextflow (>=24.04.0)
-*   Docker, Singularity, or Podman
+- Nextflow (>=24.04.0)
+- Docker, Singularity, or Podman
 
 ### Run the Pipeline
 
@@ -50,14 +50,18 @@ plasma_1,patient_A,2,/data/plasma_R1.fq.gz,/data/plasma_R2.fq.gz
 ## Pipeline Stages
 
 ### Stage 1: Build Compendium
+
 Processes matched tumor/normal samples to identify high-confidence somatic variants.
+
 - **Preprocessing:** fastp (trimming) → BWA-MEM2 (alignment) → GATK4 MarkDuplicates → GATK4 BQSR.
 - **Somatic Calling:** Ensemble of Mutect2, Strelka2, and LoFreq.
 - **Ensemble Filtering:** Intersection of ≥2/3 callers followed by genomic blacklist filtering (ENCODE, repeats, common variants).
 - **CNA Calling:** CNVkit for tumor/normal copy number analysis.
 
 ### Stage 2: MRDetect Integration (In Development)
+
 Integrates signal across compendium loci in plasma cfDNA.
+
 - **SNV Integration:** Read-centric SVM filtering and binomial modeling.
 - **CNA Integration:** Directional signal accumulation at patient-specific CNA segments.
 - **Fragment Analysis:** Joint KDE of fragment size distributions.
@@ -79,3 +83,11 @@ Aperture-MRD was originally developed by Stefan Filges.
 
 1. Zviran et al. "Genome-wide cell-free DNA mutational integration enables ultra-low-level cancer detection in monitoring." *Nature Medicine* (2020).
 2. Guille et al. "MRDetect: a software for ultrasensitive detection of circulating tumor DNA." *Briefings in Bioinformatics* (2025).
+
+## A note on tools
+
+The performance requirements of deep WGS processing require efficient tools. Recenlty, many existing tools have been re-implemented in [Rust](https://lh3.github.io/2026/04/17/the-ai-rewrite-dilemma) to improve performance. 
+
+Wherever possible, the pipeline uses the latest and most efficient tools for each task.
+
+Beyond code improvements for CPU architectures, hardware-accelerated tools (esp. GPU, such as [parabricks](https://github.com/gtc-genomics/parabricks)) are optionally available for certain steps.

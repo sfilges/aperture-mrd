@@ -1,27 +1,25 @@
 
-
 // Mutect2 and post-processing modules
-include { GATK4_MUTECT2 as MUTECT2_SOMATIC                              } from '../modules/gatk4/mutect2/main'
-include { GATK4_MERGEVCFS as MERGE_MUTECT2                              } from '../modules/gatk4/mergevcfs/main'
-include { GATK4_MERGEMUTECTSTATS as MERGEMUTECTSTATS                    } from '../modules/gatk4/mergemutectstats/main'
-include { GATK4_LEARNREADORIENTATIONMODEL as LEARNREADORIENTATIONMODEL  } from '../modules/gatk4/learnreadorientationmodel/main'
-include { GATK4_GETPILEUPSUMMARIES as GETPILEUPSUMMARIES_NORMAL         } from '../modules/gatk4/getpileupsummaries/main'
-include { GATK4_GETPILEUPSUMMARIES as GETPILEUPSUMMARIES_TUMOR          } from '../modules/gatk4/getpileupsummaries/main'
-include { GATK4_CALCULATECONTAMINATION as CALCULATECONTAMINATION        } from '../modules/gatk4/calculatecontamination/main'
-include { GATK4_FILTERMUTECTCALLS as FILTERMUTECTCALLS                   } from '../modules/gatk4/filtermutectcalls/main'
+include { GATK4_MUTECT2 as MUTECT2_SOMATIC } from '../modules/gatk4/mutect2/main'
+include { GATK4_MERGEVCFS as MERGE_MUTECT2 } from '../modules/gatk4/mergevcfs/main'
+include { GATK4_MERGEMUTECTSTATS as MERGEMUTECTSTATS } from '../modules/gatk4/mergemutectstats/main'
+include { GATK4_LEARNREADORIENTATIONMODEL as LEARNREADORIENTATIONMODEL } from '../modules/gatk4/learnreadorientationmodel/main'
+include { GATK4_GETPILEUPSUMMARIES as GETPILEUPSUMMARIES_NORMAL } from '../modules/gatk4/getpileupsummaries/main'
+include { GATK4_GETPILEUPSUMMARIES as GETPILEUPSUMMARIES_TUMOR } from '../modules/gatk4/getpileupsummaries/main'
+include { GATK4_CALCULATECONTAMINATION as CALCULATECONTAMINATION } from '../modules/gatk4/calculatecontamination/main'
+include { GATK4_FILTERMUTECTCALLS as FILTERMUTECTCALLS } from '../modules/gatk4/filtermutectcalls/main'
 
 // Other variant callers
-include { MANTA_SOMATIC                    } from '../modules/variant_callers/manta/main'
-include { STRELKA_SOMATIC                  } from '../modules/variant_callers/strelka2/main'
-include { LOFREQ_SOMATIC                   } from '../modules/variant_callers/lofreq/main'
-include { MUSE_CALL                        } from '../modules/variant_callers/muse/call/main'
+include { MANTA_SOMATIC } from '../modules/variant_callers/manta/main'
+include { STRELKA_SOMATIC } from '../modules/variant_callers/strelka2/main'
+include { LOFREQ_SOMATIC } from '../modules/variant_callers/lofreq/main'
+include { MUSE_CALL } from '../modules/variant_callers/muse/call/main'
 
 // Utility modules
-include { TABIX_BGZIPTABIX                 } from '../modules/tabix/tabix_bgzip/main'
-include { BEDTOOLS_SPLIT                   } from '../modules/bedtools/split/main'
+include { TABIX_BGZIPTABIX } from '../modules/tabix/tabix_bgzip/main'
+include { BEDTOOLS_SPLIT } from '../modules/bedtools/split/main'
 
 workflow TN_SOMATIC_VARIANT_CALLING {
-
     take:
     cram_variant_calling_pair
     ch_fasta
@@ -37,7 +35,6 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     intervals_bed_split
     intervals_bed_bgz_tbi_split // [meta, intervals.bed, intervals.bed.tbi]
 
-
     main:
 
     // Wrap dict as tuple for modules that require [meta, dict] format
@@ -48,8 +45,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     // =========================================================================
 
     // Scatter: combine each tumor-normal pair with each interval BED for parallel execution
-    cram_variant_calling_pair_interval_bed_split = cram_variant_calling_pair
-        .combine(intervals_bed_split.map { meta, bed -> [ bed ] })
+    cram_variant_calling_pair_interval_bed_split = cram_variant_calling_pair.combine(intervals_bed_split.map { _meta, bed -> [bed] })
 
     // Channel: [[meta], normal_cram, normal_crai, tumor_cram, tumor_crai, intervals.bed]
 
@@ -61,7 +57,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
         germline_resource,
         germline_resource_tbi,
         [],
-        []
+        [],
     )
 
     // =========================================================================
@@ -112,8 +108,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     )
 
     // Calculate contamination: tumor pileup with matched normal pileup
-    ch_contamination_input = GETPILEUPSUMMARIES_TUMOR.out.table
-        .join(GETPILEUPSUMMARIES_NORMAL.out.table, failOnDuplicate: true, failOnMismatch: true)
+    ch_contamination_input = GETPILEUPSUMMARIES_TUMOR.out.table.join(GETPILEUPSUMMARIES_NORMAL.out.table, failOnDuplicate: true, failOnMismatch: true)
 
     CALCULATECONTAMINATION(ch_contamination_input)
 
@@ -147,14 +142,14 @@ workflow TN_SOMATIC_VARIANT_CALLING {
         ch_fasta,
         ch_fasta_fai,
         intervals_bed_gbz_tbi_all,
-        []
+        [],
     )
 
     // Collect the output candidate small indels VCF and TBI files from Manta for Strelka
     cram_strelka = cram_variant_calling_pair
         .join(MANTA_SOMATIC.out.candidate_small_indels_vcf, failOnDuplicate: true, failOnMismatch: true)
         .join(MANTA_SOMATIC.out.candidate_small_indels_vcf_tbi, failOnDuplicate: true, failOnMismatch: true)
-        .combine(intervals_bed_bgz_tbi_split.map { meta, bed, tbi -> [ bed, tbi ] })
+        .combine(intervals_bed_bgz_tbi_split.map { meta, bed, tbi -> [bed, tbi] })
 
     // Strelka calls the entire genome by default, however variant calling may be restricted to an arbitrary
     // subset of the genome by providing a region file in BED format with the --callRegions configuration option.
@@ -162,7 +157,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     STRELKA_SOMATIC(
         cram_strelka,
         ch_fasta,
-        ch_fasta_fai
+        ch_fasta_fai,
     )
 
     // =========================================================================
@@ -175,7 +170,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
         ch_fasta,
         ch_fasta_fai,
         dbsnp,
-        dbsnp_tbi
+        dbsnp_tbi,
     )
 
     //
@@ -203,14 +198,14 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     versions = versions.mix(LOFREQ_SOMATIC.out.versions)
 
     emit:
-    mutect2_vcf          = FILTERMUTECTCALLS.out.vcf          // [meta, filtered.vcf.gz]
-    mutect2_tbi          = FILTERMUTECTCALLS.out.tbi          // [meta, filtered.vcf.gz.tbi]
-    mutect2_stats        = FILTERMUTECTCALLS.out.stats        // [meta, filteringStats.tsv]
-    strelka_snvs_vcf     = STRELKA_SOMATIC.out.vcf_snvs      // [meta, somatic_snvs.vcf.gz]
-    strelka_snvs_tbi     = STRELKA_SOMATIC.out.vcf_snvs_tbi  // [meta, somatic_snvs.vcf.gz.tbi]
-    strelka_indels_vcf   = STRELKA_SOMATIC.out.vcf_indels    // [meta, somatic_indels.vcf.gz]
-    strelka_indels_tbi   = STRELKA_SOMATIC.out.vcf_indels_tbi // [meta, somatic_indels.vcf.gz.tbi]
-    manta_sv_vcf         = MANTA_SOMATIC.out.somatic_sv_vcf  // [meta, somaticSV.vcf.gz]
-    lofreq_vcf           = LOFREQ_SOMATIC.out.vcf             // [meta, *.vcf.gz]
-    versions             = versions
+    mutect2_vcf = FILTERMUTECTCALLS.out.vcf // [meta, filtered.vcf.gz]
+    mutect2_tbi = FILTERMUTECTCALLS.out.tbi // [meta, filtered.vcf.gz.tbi]
+    mutect2_stats = FILTERMUTECTCALLS.out.stats // [meta, filteringStats.tsv]
+    strelka_snvs_vcf = STRELKA_SOMATIC.out.vcf_snvs // [meta, somatic_snvs.vcf.gz]
+    strelka_snvs_tbi = STRELKA_SOMATIC.out.vcf_snvs_tbi // [meta, somatic_snvs.vcf.gz.tbi]
+    strelka_indels_vcf = STRELKA_SOMATIC.out.vcf_indels // [meta, somatic_indels.vcf.gz]
+    strelka_indels_tbi = STRELKA_SOMATIC.out.vcf_indels_tbi // [meta, somatic_indels.vcf.gz.tbi]
+    manta_sv_vcf = MANTA_SOMATIC.out.somatic_sv_vcf // [meta, somaticSV.vcf.gz]
+    lofreq_vcf = LOFREQ_SOMATIC.out.vcf // [meta, *.vcf.gz]
+    versions = versions
 }
