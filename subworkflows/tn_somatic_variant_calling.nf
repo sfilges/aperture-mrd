@@ -1,4 +1,3 @@
-
 // Mutect2 and post-processing modules
 include { GATK4_MUTECT2 as MUTECT2_SOMATIC } from '../modules/gatk4/mutect2/main'
 include { GATK4_MERGEVCFS as MERGE_MUTECT2 } from '../modules/gatk4/mergevcfs/main'
@@ -30,7 +29,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     versions
     dbsnp
     dbsnp_tbi
-    intervals_bed_all
+    _intervals_bed_all
     intervals_bed_gbz_tbi_all
     intervals_bed_split
     intervals_bed_bgz_tbi_split // [meta, intervals.bed, intervals.bed.tbi]
@@ -81,11 +80,11 @@ workflow TN_SOMATIC_VARIANT_CALLING {
 
     // GetPileupSummaries for tumor and normal — needed for contamination estimation
     // Extract tumor and normal CRAMs separately from the pair channel
-    ch_tumor_pileup_input = cram_variant_calling_pair.map { meta, normal_cram, normal_crai, tumor_cram, tumor_crai ->
+    ch_tumor_pileup_input = cram_variant_calling_pair.map { meta, _normal_cram, _normal_crai, tumor_cram, tumor_crai ->
         [meta, tumor_cram, tumor_crai, []]
     }
 
-    ch_normal_pileup_input = cram_variant_calling_pair.map { meta, normal_cram, normal_crai, tumor_cram, tumor_crai ->
+    ch_normal_pileup_input = cram_variant_calling_pair.map { meta, normal_cram, normal_crai, _tumor_cram, _tumor_crai ->
         [meta, normal_cram, normal_crai, []]
     }
 
@@ -149,7 +148,7 @@ workflow TN_SOMATIC_VARIANT_CALLING {
     cram_strelka = cram_variant_calling_pair
         .join(MANTA_SOMATIC.out.candidate_small_indels_vcf, failOnDuplicate: true, failOnMismatch: true)
         .join(MANTA_SOMATIC.out.candidate_small_indels_vcf_tbi, failOnDuplicate: true, failOnMismatch: true)
-        .combine(intervals_bed_bgz_tbi_split.map { meta, bed, tbi -> [bed, tbi] })
+        .combine(intervals_bed_bgz_tbi_split.map { _meta, bed, tbi -> [bed, tbi] })
 
     // Strelka calls the entire genome by default, however variant calling may be restricted to an arbitrary
     // subset of the genome by providing a region file in BED format with the --callRegions configuration option.

@@ -10,39 +10,38 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { FASTQC as FASTQC_RAW     } from '../modules/fastqc/main'
-include { FASTP                     } from '../modules/fastp/main'
-include { BWA_INDEX                 } from '../modules/bwamem/index/main'
-include { BWA_MEM                   } from '../modules/bwamem/mem/main'
-include { BWAMEM2_INDEX             } from '../modules/bwamem2/index/main'
-include { BWAMEM2_MEM              } from '../modules/bwamem2/mem/main'
-include { GATK4_MARKDUPLICATES      } from '../modules/gatk4/markduplicates/main'
-include { GATK4_BASERECALIBRATOR    } from '../modules/gatk4/baserecalibrator/main'
-include { GATK4_APPLYBQSR           } from '../modules/gatk4/applybqsr/main'
+include { FASTQC as FASTQC_RAW } from '../modules/fastqc/main'
+include { FASTP } from '../modules/fastp/main'
+include { BWA_INDEX } from '../modules/bwamem/index/main'
+include { BWA_MEM } from '../modules/bwamem/mem/main'
+include { BWAMEM2_INDEX } from '../modules/bwamem2/index/main'
+include { BWAMEM2_MEM } from '../modules/bwamem2/mem/main'
+include { GATK4_MARKDUPLICATES } from '../modules/gatk4/markduplicates/main'
+include { GATK4_BASERECALIBRATOR } from '../modules/gatk4/baserecalibrator/main'
+include { GATK4_APPLYBQSR } from '../modules/gatk4/applybqsr/main'
 include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
-include { SAMTOOLS_STATS            } from '../modules/samtools/stats/main'
-include { MOSDEPTH                  } from '../modules/mosdepth/main'
+include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
+include { MOSDEPTH } from '../modules/mosdepth/main'
 
 workflow PREPROCESS_READS {
-
     take:
-    ch_reads               // [meta, [fastq1, fastq2]]
-    ch_fasta               // [meta, fasta]
-    ch_fasta_fai           // [meta, fai]
-    dict                   // path(dict)
-    known_sites_indels     // [path(vcf), ...]
+    ch_reads // [meta, [fastq1, fastq2]]
+    ch_fasta // [meta, fasta]
+    ch_fasta_fai // [meta, fai]
+    dict // path(dict)
+    known_sites_indels // [path(vcf), ...]
     known_sites_indels_tbi // [path(tbi), ...]
 
     main:
     ch_versions = channel.empty()
-    ch_reports  = channel.empty()
+    ch_reports = channel.empty()
 
     //
     // FastQC on raw reads
     //
     FASTQC_RAW(ch_reads)
     ch_versions = ch_versions.mix(FASTQC_RAW.out.versions)
-    ch_reports  = ch_reports.mix(FASTQC_RAW.out.zip.collect { it[1] }.ifEmpty([]))
+    ch_reports = ch_reports.mix(FASTQC_RAW.out.zip.collect { it -> it[1] }.ifEmpty([]))
 
     //
     // Trimming with fastp
@@ -56,7 +55,7 @@ workflow PREPROCESS_READS {
         params.save_fastqs,
     )
     ch_versions = ch_versions.mix(FASTP.out.versions)
-    ch_reports  = ch_reports.mix(FASTP.out.json.collect { it[1] }.ifEmpty([]))
+    ch_reports = ch_reports.mix(FASTP.out.json.collect { it -> it[1] }.ifEmpty([]))
 
     // Handle split FASTQs: collate paired reads and transpose for per-chunk alignment
     if (params.split_fastq) {
@@ -119,6 +118,10 @@ workflow PREPROCESS_READS {
         ch_aligned_bams = BWAMEM2_MEM.out.bam
         ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
     }
+    else if (params.aligner == 'parabricks') {
+        // TODO: Add parabricks alignment
+        error("Parabricks aligner is not yet implemented.")
+    }
     else {
         error("Unknown aligner: ${params.aligner}. Supported aligners are: bwa, bwamem2.")
     }
@@ -154,11 +157,10 @@ workflow PREPROCESS_READS {
         known_sites_indels_tbi,
     )
     ch_versions = ch_versions.mix(GATK4_BASERECALIBRATOR.out.versions)
-    ch_reports  = ch_reports.mix(GATK4_BASERECALIBRATOR.out.table.collect { meta, table -> [table] })
+    ch_reports = ch_reports.mix(GATK4_BASERECALIBRATOR.out.table.collect { _meta, table -> [table] })
 
     // Join CRAM with recalibration table for ApplyBQSR
-    cram_applybqsr = GATK4_MARKDUPLICATES.out.cram
-        .join(GATK4_BASERECALIBRATOR.out.table, failOnDuplicate: true, failOnMismatch: true)
+    cram_applybqsr = GATK4_MARKDUPLICATES.out.cram.join(GATK4_BASERECALIBRATOR.out.table, failOnDuplicate: true, failOnMismatch: true)
 
     GATK4_APPLYBQSR(
         cram_applybqsr,
@@ -189,15 +191,15 @@ workflow PREPROCESS_READS {
     //
     SAMTOOLS_STATS(ch_cram, ch_fasta)
     ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
-    ch_reports  = ch_reports.mix(SAMTOOLS_STATS.out.stats.collect { meta, stats -> [stats] })
+    ch_reports = ch_reports.mix(SAMTOOLS_STATS.out.stats.collect { _meta, stats -> [stats] })
 
     MOSDEPTH(ch_cram, ch_fasta)
     ch_versions = ch_versions.mix(MOSDEPTH.out.versions)
-    ch_reports  = ch_reports.mix(MOSDEPTH.out.global_txt.collect { meta, global_txt -> [global_txt] })
-    ch_reports  = ch_reports.mix(MOSDEPTH.out.regions_txt.collect { meta, regions_txt -> [regions_txt] })
+    ch_reports = ch_reports.mix(MOSDEPTH.out.global_txt.collect { _meta, global_txt -> [global_txt] })
+    ch_reports = ch_reports.mix(MOSDEPTH.out.regions_txt.collect { _meta, regions_txt -> [regions_txt] })
 
     emit:
-    cram     = ch_cram      // [meta, cram, crai] — recalibrated, indexed
-    reports  = ch_reports    // channel of QC files for MultiQC
-    versions = ch_versions   // channel of versions.yml
+    cram = ch_cram // [meta, cram, crai] — recalibrated, indexed
+    reports = ch_reports // channel of QC files for MultiQC
+    versions = ch_versions // channel of versions.yml
 }
