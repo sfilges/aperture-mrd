@@ -91,3 +91,14 @@ The performance requirements of deep WGS processing require efficient tools. Rec
 Wherever possible, the pipeline uses the latest and most efficient tools for each task.
 
 Beyond code improvements for CPU architectures, hardware-accelerated tools (esp. GPU, such as [parabricks](https://github.com/gtc-genomics/parabricks)) are optionally available for certain steps.
+
+### Preprocessing
+
+The preprocessing workflow includes:
+
+- Fastp for trimming
+- BWA-MEM2 for alignment
+- GATK4 MarkDuplicates for duplicate removal
+- GATK4 BQSR for base quality score recalibration
+
+Note: Consider replacing GATK with faster alternatives such as parabriicks (if GPU available), or CPU tools such as sambamba, doppelmark, or fastdup.
