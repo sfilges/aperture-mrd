@@ -1,6 +1,6 @@
-process SAMBAMBA_MARKDUP {
+process SAMBAMBA_FLAGSTAT {
     tag "$meta.id"
-    label 'process_medium'
+    label 'process_single'
 
     container 'quay.io/biocontainers/sambamba:1.0.1--h6f6fda4_0'
 
@@ -8,25 +8,20 @@ process SAMBAMBA_MARKDUP {
     tuple val(meta), path(bam)
 
     output:
-    tuple val(meta), path("*.bam"), emit: bam
-    tuple val(meta), path("*.bai"), emit: bai, optional: true
-    path "versions.yml"           , emit: versions
+    tuple val(meta), path("*.stats"), emit: stats
+    path "versions.yml"             , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-
     """
     sambamba \\
-        markdup \\
-        $args \\
+        flagstat \\
         -t $task.cpus \\
-        --tmpdir ./ \\
         $bam \\
-        ${prefix}.bam
+        > ${prefix}.stats
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

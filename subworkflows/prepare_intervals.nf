@@ -67,7 +67,7 @@ workflow PREPARE_INTERVALS {
     ch_versions = ch_versions.mix(BEDTOOLS_SPLIT.out.versions)
 
     // Flatten the split BEDs into individual [meta, bed] tuples
-    intervals_bed_split = BEDTOOLS_SPLIT.out.beds.flatMap { meta, beds ->
+    intervals_bed_split = BEDTOOLS_SPLIT.out.beds.flatMap { _meta, beds ->
         beds instanceof List
             ? beds.collect { bed -> [["id": bed.baseName], bed] }
             : [[["id": beds.baseName], beds]]
