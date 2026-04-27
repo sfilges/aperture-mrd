@@ -21,7 +21,7 @@ include { BEDTOOLS_MERGE } from '../modules/bedtools/merge/main'
 include { BCFTOOLS_VIEW } from '../modules/bcftools/view/main'
 include { BCFTOOLS_ISEC as GNOMAD_ISEC } from '../modules/bcftools/isec/main'
 
-workflow BLACKLIST_FILTER {
+workflow VCF_FILTER {
     take:
     compendium_vcf // [meta, vcf.gz]
     compendium_tbi // [meta, tbi]

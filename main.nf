@@ -30,7 +30,7 @@ include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
 include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
 include { TN_SOMATIC_VARIANT_CALLING } from './subworkflows/tn_somatic_variant_calling'
 include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
-include { BLACKLIST_FILTER } from './subworkflows/blacklist_filter'
+include { VCF_FILTER } from './subworkflows/vcf_filter'
 include { MULTIQC } from './modules/multiqc/main'
 
 /*
@@ -206,14 +206,14 @@ workflow {
         )
         .collect()
 
-    BLACKLIST_FILTER(
+    VCF_FILTER(
         VCF_CONSENSUS.out.compendium_vcf,
         VCF_CONSENSUS.out.compendium_tbi,
         germline_resource,
         germline_resource_tbi,
         ch_blacklists,
     )
-    ch_versions = ch_versions.mix(BLACKLIST_FILTER.out.versions)
+    ch_versions = ch_versions.mix(VCF_FILTER.out.versions)
 
     // TODO: CNA calling with CNVkit
 
