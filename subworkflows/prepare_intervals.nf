@@ -12,15 +12,15 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { BEDTOOLS_SPLIT } from '../../modules/bedtools/split/main'
-include { TABIX_BGZIPTABIX as TABIX_ALL } from '../../modules/tabix/tabix_bgzip/main'
-include { TABIX_BGZIPTABIX as TABIX_SPLIT } from '../../modules/tabix/tabix_bgzip/main'
+include { BEDTOOLS_SPLIT } from '../modules/bedtools/split/main'
+include { TABIX_BGZIPTABIX as TABIX_ALL } from '../modules/tabix/tabix_bgzip/main'
+include { TABIX_BGZIPTABIX as TABIX_SPLIT } from '../modules/tabix/tabix_bgzip/main'
 
 workflow PREPARE_INTERVALS {
     take:
     fai // path: genome .fai index
     intervals_bed // path: BED file of calling regions (or empty)
-    target_bed // path: optional target BED (panel mode, unused for WGS)
+    _target_bed // path: optional target BED (panel mode, unused for WGS)
 
     main:
 

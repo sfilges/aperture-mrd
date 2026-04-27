@@ -26,16 +26,12 @@ nextflow.enable.dsl = 2
 include { samplesheetToList } from 'plugin/nf-schema'
 include { validateParameters } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from './subworkflows/utils'
-
-include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals/main'
-include { PREPROCESS_READS } from './subworkflows/preprocess_reads'
-
-include { MULTIQC } from './modules/multiqc/main'
-
+include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
+include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
 include { TN_SOMATIC_VARIANT_CALLING } from './subworkflows/tn_somatic_variant_calling'
-include { CALLER_INTERSECTION } from './subworkflows/caller_intersection'
+include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
 include { BLACKLIST_FILTER } from './subworkflows/blacklist_filter'
-
+include { MULTIQC } from './modules/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +50,7 @@ workflow {
 
     // Initilialise versions and reports channels
     ch_versions = channel.empty()
-    ch_reports = channel.empty()
+    _ch_reports = channel.empty()
 
     ch_multiqc_files = channel.empty()
 
@@ -95,8 +91,8 @@ workflow {
     known_indels_tbi = params.known_indels_tbi ? channel.fromPath(params.known_indels_tbi).collect() : channel.value([])
     dbsnp = params.dbsnp ? channel.fromPath(params.dbsnp).collect() : channel.value([])
     dbsnp_tbi = params.dbsnp ? channel.fromPath("${params.dbsnp}.tbi").collect() : channel.value([])
-    known_snps = params.known_snps ? channel.fromPath(params.known_snps).collect() : channel.value([])
-    known_snps_tbi = params.known_snps ? channel.fromPath("${params.known_snps}.tbi").collect() : channel.value([])
+    _known_snps = params.known_snps ? channel.fromPath(params.known_snps).collect() : channel.value([])
+    _known_snps_tbi = params.known_snps ? channel.fromPath("${params.known_snps}.tbi").collect() : channel.value([])
     germline_resource = params.germline_resource ? channel.fromPath(params.germline_resource).collect() : channel.value([])
     germline_resource_tbi = params.germline_resource_tbi ? channel.fromPath("${params.germline_resource_tbi}").collect() : channel.value([])
 
@@ -116,7 +112,7 @@ workflow {
     //
     // Preprocessing: FastQC → fastp → alignment → MarkDuplicates → BQSR → QC
     //
-    PREPROCESS_READS(
+    PREPROCESS_GATK(
         ch_samplesheet,
         ch_fasta,
         ch_fasta_fai,
@@ -125,9 +121,9 @@ workflow {
         known_sites_indels_tbi,
     )
 
-    ch_cram_for_variant_calling = PREPROCESS_READS.out.cram
-    ch_versions = ch_versions.mix(PREPROCESS_READS.out.versions)
-    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_READS.out.reports)
+    ch_cram_for_variant_calling = PREPROCESS_GATK.out.cram
+    ch_versions = ch_versions.mix(PREPROCESS_GATK.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_GATK.out.reports)
 
     //
     // Logic to combine tumor-normal pairs. Does *not* work for tumor only or germline only samples!
@@ -135,9 +131,9 @@ workflow {
 
     //The branch operator forwards each item from a source channel to one of multiple 
     //output channels, based on a selection criteria.
-    ch_cram_variant_calling_by_status = ch_cram_for_variant_calling.branch {
-        normal: it[0].status == 0
-        tumor: it[0].status == 1
+    ch_cram_variant_calling_by_status = ch_cram_for_variant_calling.branch { row ->
+        normal: row[0].status == 0
+        tumor: row[0].status == 1
     }
 
     // All Germline samples
@@ -187,7 +183,7 @@ workflow {
     //
     // Caller intersection: keep SNVs with >=2/3 caller agreement
     //
-    CALLER_INTERSECTION(
+    VCF_CONSENSUS(
         TN_SOMATIC_VARIANT_CALLING.out.mutect2_vcf,
         TN_SOMATIC_VARIANT_CALLING.out.mutect2_tbi,
         TN_SOMATIC_VARIANT_CALLING.out.strelka_snvs_vcf,
@@ -196,7 +192,7 @@ workflow {
         ch_fasta_fai,
     )
 
-    ch_versions = ch_versions.mix(CALLER_INTERSECTION.out.versions)
+    ch_versions = ch_versions.mix(VCF_CONSENSUS.out.versions)
 
     //
     // Blacklist filtering + gnomAD common variant exclusion
@@ -211,8 +207,8 @@ workflow {
         .collect()
 
     BLACKLIST_FILTER(
-        CALLER_INTERSECTION.out.compendium_vcf,
-        CALLER_INTERSECTION.out.compendium_tbi,
+        VCF_CONSENSUS.out.compendium_vcf,
+        VCF_CONSENSUS.out.compendium_tbi,
         germline_resource,
         germline_resource_tbi,
         ch_blacklists,
@@ -223,12 +219,15 @@ workflow {
 
 
 
+    // TODO: Annotate variants with VEP
+
+
     //
     // Collate and save software versions
     //
     softwareVersionsToYAML(ch_versions)
         .collectFile(storeDir: "${params.outdir}/${workflow.runName}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
-        .set { ch_collated_versions }
+        .set { _ch_collated_versions }
 
     //
     // Multiqc

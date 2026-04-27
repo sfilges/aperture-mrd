@@ -23,7 +23,7 @@ include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
 include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
 include { MOSDEPTH } from '../modules/mosdepth/main'
 
-workflow PREPROCESS_READS {
+workflow PREPROCESS_GATK {
     take:
     ch_reads // [meta, [fastq1, fastq2]]
     ch_fasta // [meta, fasta]

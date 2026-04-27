@@ -18,5 +18,5 @@
 def softwareVersionsToYAML(ch_versions) {
     return ch_versions
         .unique()
-        .map { it.text }
+        .map { versions_yml -> versions_yml.text }
 }

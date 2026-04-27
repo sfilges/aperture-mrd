@@ -7,6 +7,10 @@
 # BlueJ files
 *.ctxt
 
+data/
+
+.DS_STORE
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
@@ -40,6 +44,7 @@ build/
 # Agents
 GEMINI.md
 CLAUDE.md
+.claude/
 
 .pytest_cache/
 .ruff_cache/

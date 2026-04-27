@@ -102,3 +102,8 @@ The preprocessing workflow includes:
 - GATK4 BQSR for base quality score recalibration
 
 Note: Consider replacing GATK with faster alternatives such as parabriicks (if GPU available), or CPU tools such as sambamba, doppelmark, or fastdup.
+
+
+## Modes
+
+Supports WGS and WES modes (mostly affeecting default parameters (which?))
