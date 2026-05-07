@@ -28,7 +28,7 @@ include { validateParameters } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from './subworkflows/utils'
 include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
 include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
-include { TN_SOMATIC_VARIANT_CALLING } from './subworkflows/tn_somatic_variant_calling'
+include { TN_SOMATIC_SNV_CALLING } from './subworkflows/tn_somatic_snv_calling'
 include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
 include { VCF_FILTER } from './subworkflows/vcf_filter'
 include { MULTIQC } from './modules/multiqc/main'
@@ -164,7 +164,7 @@ workflow {
     // Run SNV variant calling on tumor-normal pairs
     //
 
-    TN_SOMATIC_VARIANT_CALLING(
+    TN_SOMATIC_SNV_CALLING(
         cram_variant_calling_pair,
         ch_fasta,
         ch_fasta_fai,

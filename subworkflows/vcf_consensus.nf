@@ -49,6 +49,9 @@ workflow VCF_CONSENSUS {
         [meta, selected.first()]
     }
 
+    // TODO: Merge strelka snv + indel vcfs here before normalization or after? Now only includes SNV anyway.
+
+
     //
     // Normalize all three caller VCFs (left-align, split multiallelic)
     //
@@ -78,6 +81,7 @@ workflow VCF_CONSENSUS {
             [meta, [m_vcf, s_vcf, l_vcf, mu_vcf], [m_tbi, s_tbi, l_tbi, mu_tbi]]
         }
 
+    // TODO: Need to make sure that the bcftools outpout maintains mutect2 header and depth/QC values.
     BCFTOOLS_ISEC(ch_isec_input, "+2")
     ch_versions = ch_versions.mix(BCFTOOLS_ISEC.out.versions)
 

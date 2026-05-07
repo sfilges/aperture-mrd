@@ -18,7 +18,7 @@ include { MUSE_CALL } from '../modules/variant_callers/muse/call/main'
 include { TABIX_BGZIPTABIX } from '../modules/tabix/tabix_bgzip/main'
 include { BEDTOOLS_SPLIT } from '../modules/bedtools/split/main'
 
-workflow TN_SOMATIC_VARIANT_CALLING {
+workflow TN_SOMATIC_SNV_CALLING {
     take:
     cram_variant_calling_pair
     ch_fasta
