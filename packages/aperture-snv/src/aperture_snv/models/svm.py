@@ -33,27 +33,24 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from aperture_snv.extract import CandidateRead
+    from aperture_snv.extract import FragmentFeatures
 
 
 FEATURE_NAMES = ("vbq", "mrbq", "pir", "concordance", "mapq")
 
+_CONCORDANCE_ENCODING = {"concordant": 1.0, "single": 0.5, "discordant": 0.0}
 
-def candidate_to_features(candidate: CandidateRead) -> NDArray[np.float64]:
-    """Extract the 5-element feature vector from a CandidateRead.
+
+def candidate_to_features(candidate: FragmentFeatures) -> NDArray[np.float64]:
+    """Extract the 5-element feature vector from a FragmentFeatures record.
 
     Args:
-        candidate: A CandidateRead with alignment features.
+        candidate: A FragmentFeatures record with alignment features.
 
     Returns:
         Array of shape (5,) with [VBQ, MRBQ, PIR, concordance, MAPQ].
     """
-    if candidate.is_concordant is True:
-        conc = 1.0
-    elif candidate.is_concordant is None:
-        conc = 0.5
-    else:
-        conc = 0.0
+    conc = _CONCORDANCE_ENCODING.get(candidate.concordance, 0.5)
 
     return np.array(
         [candidate.vbq, candidate.mrbq, candidate.pir, conc, candidate.mapq],
@@ -62,12 +59,12 @@ def candidate_to_features(candidate: CandidateRead) -> NDArray[np.float64]:
 
 
 def candidates_to_feature_matrix(
-    candidates: Sequence[CandidateRead],
+    candidates: Sequence[FragmentFeatures],
 ) -> NDArray[np.float64]:
-    """Convert a sequence of CandidateReads to a feature matrix.
+    """Convert a sequence of FragmentFeatures to a feature matrix.
 
     Args:
-        candidates: Sequence of CandidateRead objects.
+        candidates: Sequence of FragmentFeatures objects.
 
     Returns:
         Array of shape (n_reads, 5).
@@ -137,20 +134,20 @@ def train_svm(
 
 
 def filter_candidates(
-    candidates: Sequence[CandidateRead],
+    candidates: Sequence[FragmentFeatures],
     model: Pipeline,
-) -> list[CandidateRead]:
-    """Apply the trained SVM to filter candidate reads.
+) -> list[FragmentFeatures]:
+    """Apply the trained SVM to filter candidate fragments.
 
-    Reads classified as artifacts (class 0) are removed.
-    Reads classified as likely true ctDNA (class 1) are retained.
+    Fragments classified as artifacts (class 0) are removed.
+    Fragments classified as likely true ctDNA (class 1) are retained.
 
     Args:
-        candidates: Sequence of CandidateRead objects.
+        candidates: Sequence of FragmentFeatures objects.
         model: Trained SVM pipeline.
 
     Returns:
-        List of CandidateReads that pass the SVM filter.
+        List of FragmentFeatures that pass the SVM filter.
     """
     if not candidates:
         return []

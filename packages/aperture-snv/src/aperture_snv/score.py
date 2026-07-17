@@ -1,164 +1,126 @@
-"""Binomial model for tumor fraction estimation and detection z-scoring.
+"""PPM-based mutational-load estimation and detection z-scoring.
 
-After SVM filtering, the number of detected variants at compendium sites
-in plasma follows a binomial model. This module computes the tumor fraction
-(TF) and a detection z-score against a control noise distribution.
+Instead of inverting a coverage/binomial model to a "true" tumor fraction (fragile at
+low WGS depth and undefined in the tumor-agnostic case), we report an interpretable
+mutational-load proxy modeled on Caris Assure's "tumor parts per million" (PPM):
 
-The key insight: at low TF, each compendium site has independent probability
-of being sampled, governed by coverage depth. Integrating signal across
-thousands of sites overcomes the per-site sampling limitation.
+    PPM = tumor-supporting reads / total aligned reads * 1e6
+
+The numerator is the model signal — for a calibrated per-fragment classifier, the
+expected count ``sum(p_i)`` over alt-supporting fragments; with no model yet, a plain
+count of alt-supporting fragments. The denominator is a pure sequencing-depth
+normalizer, so the same formula works in both tumor-informed (compendium sites) and
+agnostic (called candidates) settings — only the site set feeding the numerator changes.
+
+Detection is a separate step: z-score the sample PPM against a control-panel PPM
+distribution (see noise.py). PPM itself needs no controls.
 
 References:
-    Zviran et al. Nature Medicine (2020), Methods: Equations 4 and 5.
+    Abraham et al. Sci Rep (2025), Caris Assure: "Mutationome for ABCDai" (tumor PPM).
 """
 
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from aperture_snv.extract import FragmentFeatures
+
+PPM_SCALE = 1_000_000
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class SNVScore:
-    """Result of SNV-based ctDNA scoring for a single plasma sample."""
+    """Result of PPM-based ctDNA scoring for a single plasma sample."""
 
-    detected_variants: int  # M: number of compendium sites with supporting reads
-    total_sites: int  # N: total sites in patient compendium
-    mean_coverage: float  # cov: mean coverage at compendium sites in plasma
-    noise_rate: float  # μ: mean artifact noise rate (errors per read evaluated)
-    total_reads_evaluated: int  # R: total reads covering compendium sites
-    tumor_fraction: float  # estimated TF
-    detection_rate: float  # M / R
-    z_score: float  # z-score against control noise distribution
-    is_detected: bool  # whether z_score exceeds threshold
+    supporting_reads: float  # expected tumor-supporting reads (sum of per-fragment weights)
+    total_aligned_reads: int  # depth normalizer
+    ppm: float  # supporting_reads / total_aligned_reads * 1e6
+    z_score: float  # PPM vs control-panel noise distribution
+    is_detected: bool  # whether z_score exceeds the threshold
 
 
-def estimate_tumor_fraction(
-    M: int,
-    N: int,
-    cov: float,
-    mu: float,
-    R: int,
+def sum_supporting_reads(
+    fragments: Iterable[FragmentFeatures],
+    weight_fn: Callable[[FragmentFeatures], float] | None = None,
 ) -> float:
-    """Estimate tumor fraction from detected variant count.
-
-    Implements Eq. 5 from Zviran et al.:
-        TF = 1 - (1 - [M - μ*R] / N) ^ (1/cov)
-
-    At very low TF, the relationship between detected mutations and TF
-    is approximately linear: M ≈ N * TF * cov + μ*R
+    """Expected tumor-supporting reads across alt-supporting fragments.
 
     Args:
-        M: Number of compendium sites with detected variants in plasma.
-        N: Total number of SNVs in the patient compendium.
-        cov: Mean coverage depth at compendium sites in the plasma sample.
-        mu: Noise rate (errors per read evaluated) from control samples.
-        R: Total reads evaluated at compendium sites.
+        fragments: Candidate fragments at the sites of interest.
+        weight_fn: Maps a fragment to its P(tumor) in [0, 1]. Defaults to a weight of
+            1.0 per alt-supporting fragment (a plain count) until a calibrated model
+            exists; pass the model's per-fragment probability once available.
 
     Returns:
-        Estimated tumor fraction (0–1). Returns 0.0 if signal is below noise.
+        Sum of weights over alt-supporting fragments.
     """
-    if N == 0 or cov == 0:
-        return 0.0
-
-    signal = M - mu * R
-    if signal <= 0:
-        return 0.0
-
-    ratio = signal / N
-    if ratio >= 1.0:
-        return 1.0
-
-    tf = 1.0 - (1.0 - ratio) ** (1.0 / cov)
-    return max(0.0, min(1.0, tf))
+    total = 0.0
+    for fragment in fragments:
+        if fragment.supports_alt:
+            total += 1.0 if weight_fn is None else weight_fn(fragment)
+    return total
 
 
-def compute_detection_rate(M: int, R: int) -> float:
-    """Compute the detection rate: fraction of evaluated reads supporting a variant.
+def compute_ppm(supporting_reads: float, total_aligned_reads: int) -> float:
+    """Tumor-supporting reads per million aligned reads.
 
     Args:
-        M: Number of detected variants.
-        R: Total reads evaluated.
+        supporting_reads: Expected tumor-supporting reads (numerator).
+        total_aligned_reads: Total mapped reads in the sample (denominator).
 
     Returns:
-        Detection rate M/R.
+        PPM, or 0.0 if the sample has no aligned reads.
     """
-    if R == 0:
+    if total_aligned_reads <= 0:
         return 0.0
-    return M / R
+    return supporting_reads / total_aligned_reads * PPM_SCALE
 
 
-def compute_z_score(
-    detection_rate: float,
-    noise_mean: float,
-    noise_std: float,
-) -> float:
-    """Compute z-score of detection rate against control noise distribution.
-
-    z = (det_rate - μ) / σ
-
-    The noise distribution is estimated by applying the patient-specific
-    compendium to control plasma samples (cross-patient analysis) or to
-    other patients' plasma samples.
+def compute_z_score(ppm: float, noise_mean: float, noise_std: float) -> float:
+    """Z-score of a sample PPM against the control-panel noise distribution.
 
     Args:
-        detection_rate: Observed detection rate in patient plasma.
-        noise_mean: Mean detection rate in control samples (μ).
-        noise_std: Standard deviation of detection rate in controls (σ).
+        ppm: Observed PPM in the patient plasma.
+        noise_mean: Mean PPM across control (TF=0) samples.
+        noise_std: Standard deviation of PPM across controls.
 
     Returns:
-        z-score. Values > 1.2 typically indicate detection at >95% specificity.
+        Z-score. If the control std is zero, returns +inf above the mean else 0.0.
     """
     if noise_std == 0:
-        return 0.0 if detection_rate <= noise_mean else float("inf")
-    return (detection_rate - noise_mean) / noise_std
+        return 0.0 if ppm <= noise_mean else float("inf")
+    return (ppm - noise_mean) / noise_std
 
 
 def score_sample(
-    detected_variants: int,
-    total_sites: int,
-    mean_coverage: float,
-    noise_rate: float,
-    total_reads_evaluated: int,
+    supporting_reads: float,
+    total_aligned_reads: int,
     noise_mean: float,
     noise_std: float,
     z_threshold: float = 1.2,
 ) -> SNVScore:
-    """Compute full SNV-based ctDNA score for a plasma sample.
-
-    Combines tumor fraction estimation and z-score detection into a
-    single result object.
+    """Compute the PPM mutational-load score and detection call for a plasma sample.
 
     Args:
-        detected_variants: Number of compendium sites with supporting reads post-SVM.
-        total_sites: Total SNVs in patient compendium.
-        mean_coverage: Mean coverage at compendium sites in plasma.
-        noise_rate: Per-read noise rate (μ) from control samples.
-        total_reads_evaluated: Total reads covering compendium sites.
-        noise_mean: Mean detection rate across control samples.
-        noise_std: Std deviation of detection rate across controls.
-        z_threshold: z-score threshold for positive detection (default 1.2).
+        supporting_reads: Expected tumor-supporting reads (from sum_supporting_reads).
+        total_aligned_reads: Total mapped reads in the plasma sample.
+        noise_mean: Mean PPM across control samples.
+        noise_std: Std of PPM across controls.
+        z_threshold: Z-score threshold for a positive detection call.
 
     Returns:
-        SNVScore with TF estimate, z-score, and detection call.
+        SNVScore with PPM, z-score, and detection call.
     """
-    tf = estimate_tumor_fraction(
-        M=detected_variants,
-        N=total_sites,
-        cov=mean_coverage,
-        mu=noise_rate,
-        R=total_reads_evaluated,
-    )
-    det_rate = compute_detection_rate(detected_variants, total_reads_evaluated)
-    z = compute_z_score(det_rate, noise_mean, noise_std)
-
+    ppm = compute_ppm(supporting_reads, total_aligned_reads)
+    z = compute_z_score(ppm, noise_mean, noise_std)
     return SNVScore(
-        detected_variants=detected_variants,
-        total_sites=total_sites,
-        mean_coverage=mean_coverage,
-        noise_rate=noise_rate,
-        total_reads_evaluated=total_reads_evaluated,
-        tumor_fraction=tf,
-        detection_rate=det_rate,
+        supporting_reads=supporting_reads,
+        total_aligned_reads=total_aligned_reads,
+        ppm=ppm,
         z_score=z,
         is_detected=z > z_threshold,
     )
