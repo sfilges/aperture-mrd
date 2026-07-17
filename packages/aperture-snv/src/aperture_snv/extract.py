@@ -126,7 +126,7 @@ class FragmentFeatures:
     edit_distance: int  # mismatches on the fragment EXCLUDING the candidate site
     pir: float  # fractional position in read (mean across mates, 0-1)
     dist_3prime: int  # bp from the 3' end, min across mates (error enriches at 3')
-    concordance: str  # "concordant" | "discordant" | "single"
+    concordance: int  # 0=concordant, 1=discordant, 2=single
     fragment_length: int  # insert size
     softclip_len: int  # total soft-clipped bases on the fragment
     is_proper_pair: bool
@@ -211,11 +211,11 @@ def build_fragment(site: CompendiumSite, mates: Sequence[MateObservation]) -> Fr
     n_mates = len(mates)
     bases = {m.base_at_site for m in mates}
     if n_mates == 1:
-        concordance = "single"
+        concordance = 2  # single
     elif len(bases) == 1:
-        concordance = "concordant"
+        concordance = 0  # concordant
     else:
-        concordance = "discordant"
+        concordance = 1  # discordant
 
     # Consensus base = the highest-quality observation (settles discordant pairs).
     best = max(mates, key=lambda m: m.bq_at_site)

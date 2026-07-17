@@ -1,4 +1,4 @@
-"""Read-centric SVM error suppression for cfDNA SNV candidates.
+"""Read-centric SVM error suppression for cfDNA SNV candidates (deprecated).
 
 Classifies individual reads as likely true somatic ctDNA vs sequencing artifact
 using a 5-feature linear SVM. This is fundamentally different from standard
@@ -19,7 +19,7 @@ References:
 
 from __future__ import annotations
 
-import pickle
+import joblib
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 FEATURE_NAMES = ("vbq", "mrbq", "pir", "concordance", "mapq")
 
-_CONCORDANCE_ENCODING = {"concordant": 1.0, "single": 0.5, "discordant": 0.0}
+_CONCORDANCE_ENCODING = {0: 1.0, 2: 0.5, 1: 0.0}  # concordant/single/discordant
 
 
 def candidate_to_features(candidate: FragmentFeatures) -> NDArray[np.float64]:
@@ -159,11 +159,9 @@ def filter_candidates(
 
 def save_model(model: Pipeline, path: str | Path) -> None:
     """Serialize a trained SVM model to disk."""
-    with open(path, "wb") as f:
-        pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
+    joblib.dump(model, path)
 
 
 def load_model(path: str | Path) -> Pipeline:
     """Load a serialized SVM model from disk."""
-    with open(path, "rb") as f:
-        return pickle.load(f)  # noqa: S301 — trusted internal model files only
+    return joblib.load(path)

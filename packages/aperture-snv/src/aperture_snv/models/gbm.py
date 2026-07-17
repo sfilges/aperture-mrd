@@ -35,12 +35,6 @@ if TYPE_CHECKING:
     from aperture_snv.extract import FragmentFeatures
 
 
-# concordance is categorical; encode as small integer codes. With only three levels a
-# tree can partition them with numeric splits, so we do not mark it categorical (which
-# avoids a pandas dependency and the categorical_feature deprecation). Its monotone
-# constraint is 0 — the code order is not a trust order.
-_CONCORDANCE_CODES = {"concordant": 0, "discordant": 1, "single": 2}
-
 # Monotone constraints where the direction of evidence is unambiguous, to suppress
 # spurious (batch-driven) fits. Features not listed are unconstrained (0).
 _MONOTONE_CONSTRAINTS = {
@@ -51,49 +45,20 @@ _MONOTONE_CONSTRAINTS = {
     "n_low_bq": -1,  # more low-quality bases -> less trustworthy
     "edit_distance": -1,  # more other mismatches -> likely misaligned
     "softclip_len": -1,  # more soft-clipping -> less trustworthy
-    # pir, concordance, fragment_length, is_proper_pair: non-monotonic / categorical -> 0
+    # pir, concordance, fragment_length, is_proper_pair: non-monotonic -> 0
 }
 
 MONOTONE_CONSTRAINTS: list[int] = [_MONOTONE_CONSTRAINTS.get(col, 0) for col in FEATURE_COLS]
-
-
-def _encode(fragment: FragmentFeatures) -> list[float]:
-    """Encode one fragment into the FEATURE_COLS-ordered numeric feature vector."""
-    row: list[float] = []
-    for col in FEATURE_COLS:
-        value = getattr(fragment, col)
-        if col == "concordance":
-            row.append(float(_CONCORDANCE_CODES[value]))
-        else:
-            row.append(float(value))  # ints and bools coerce cleanly
-    return row
 
 
 def fragments_to_matrix(fragments: Sequence[FragmentFeatures]) -> NDArray[np.float64]:
     """Encode fragments into a (n_fragments, n_features) matrix in FEATURE_COLS order."""
     if not fragments:
         return np.empty((0, len(FEATURE_COLS)), dtype=np.float64)
-    return np.asarray([_encode(f) for f in fragments], dtype=np.float64)
-
-
-def default_params() -> dict:
-    """Default LightGBM hyperparameters for the fragment classifier."""
-    return {
-        "objective": "binary",
-        "n_estimators": 300,
-        "learning_rate": 0.05,
-        "num_leaves": 31,
-        "min_child_samples": 50,
-        "subsample": 0.8,
-        "subsample_freq": 1,
-        "colsample_bytree": 0.8,
-        "reg_lambda": 1.0,
-        "class_weight": "balanced",
-        "monotone_constraints": MONOTONE_CONSTRAINTS,
-        "random_state": 42,
-        "n_jobs": -1,
-        "verbose": -1,
-    }
+    return np.asarray(
+        [[float(getattr(f, col)) for col in FEATURE_COLS] for f in fragments],
+        dtype=np.float64,
+    )
 
 
 class GBMModel:
@@ -112,14 +77,12 @@ class GBMModel:
         cls,
         positive_fragments: Sequence[FragmentFeatures],
         negative_fragments: Sequence[FragmentFeatures],
-        **param_overrides,
     ) -> GBMModel:
         """Train on labeled fragments.
 
         Args:
             positive_fragments: True ctDNA fragments (label 1).
             negative_fragments: Artifact fragments (label 0).
-            **param_overrides: LightGBM hyperparameters overriding `default_params`.
 
         Returns:
             An (uncalibrated) trained GBMModel. Call `calibrate` on a held-out fold
@@ -133,7 +96,22 @@ class GBMModel:
         features = np.vstack([x_pos, x_neg])
         labels = np.concatenate([np.ones(len(x_pos)), np.zeros(len(x_neg))])
 
-        classifier = LGBMClassifier(**(default_params() | param_overrides))
+        classifier = LGBMClassifier(
+            objective="binary",
+            n_estimators=300,     # num_iterations; default = 100
+            learning_rate=0.05,   # default = 0.1
+            num_leaves=31,        # default = 31
+            min_child_samples=50, # min_data_in_leaf = 20
+            subsample=0.8,        # bagging_fraction = 1.0
+            subsample_freq=1,     # bagging_freq = 0
+            colsample_bytree=0.8, # feature_fraction = 1.0
+            reg_lambda=1.0,       # lambda_l2 = 0.0
+            class_weight="balanced",
+            monotone_constraints=MONOTONE_CONSTRAINTS,
+            random_state=42,
+            n_jobs=-1,
+            verbose=-1,
+        )
         classifier.fit(features, labels)
         return cls(classifier)
 

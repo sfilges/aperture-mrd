@@ -144,7 +144,7 @@ def filter(
                     float(r["vbq"]),
                     float(r["mrbq"]),
                     float(r["pir"]),
-                    _CONCORDANCE_ENCODING.get(r["concordance"], 0.5),
+                    _CONCORDANCE_ENCODING.get(int(r["concordance"]), 0.5),
                     float(r["mapq"]),
                 ]
                 for r in rows
