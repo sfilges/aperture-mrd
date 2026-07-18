@@ -3,7 +3,7 @@ process RIKER_MULTI {
     tag "$meta.id"
     label 'process_low'
 
-    container 'biocontainers/samtools:1.19.2--h50ea8bc_0'
+    container 'quay.io/biocontainers/riker:0.4.1--hec9b1f2_0'
 
     input:
     tuple val(meta), path(input)

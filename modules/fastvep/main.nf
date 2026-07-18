@@ -1,5 +1,11 @@
+process FASTVEP {
+    // https://github.com/Huang-lab/fastVEP
+
+    container ''
 
 
-https://github.com/Huang-lab/fastVEP
+}
+
+
 
 

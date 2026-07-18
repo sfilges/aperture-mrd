@@ -1,0 +1,25 @@
+name: riker_multi
+description: Fast Rust CLI toolkit for sequencing QC metrics
+keywords:
+  - riker
+  - bam
+  - qc
+tools:
+  - riker:
+      description: |
+        Riker is the spiritual successor to picard for next-generation sequencing QC. It aims to provide modern, fast implementations of NGS QC metrics that tell you both "how does your sample look?" and often "why does it look bad?". It is not intended to be a drop-in replacement for Picard.
+      homepage: https://github.com/fulcrumgenomics/riker
+      documentation: https://github.com/fulcrumgenomics/riker
+      licence: ["MIT"]
+      identifier: biotools:riker
+input:
+output:
+  - versions:
+      - versions.yml:
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@sfilges"
+maintainers:
+  - "@sfilges
