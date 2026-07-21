@@ -12,7 +12,7 @@ process SAMTOOLS_STATS {
 
     output:
     tuple val(meta), path("*.stats"), emit: stats
-    path  "versions.yml"            , emit: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     script:
     def args = task.ext.args ?: ''
@@ -26,10 +26,5 @@ process SAMTOOLS_STATS {
         ${input} \\
         ${args} \\
         > ${prefix}.stats
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

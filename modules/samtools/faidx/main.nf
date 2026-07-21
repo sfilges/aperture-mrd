@@ -12,7 +12,7 @@ process SAMTOOLS_FAIDX {
     tuple val(meta), path ("*.{fa,fasta}") , emit: fa , optional: true
     tuple val(meta), path ("*.fai")        , emit: fai, optional: true
     tuple val(meta), path ("*.gzi")        , emit: gzi, optional: true
-    path "versions.yml"                    , emit: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -24,10 +24,5 @@ process SAMTOOLS_FAIDX {
         faidx \\
         $fasta \\
         $args
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

@@ -16,7 +16,8 @@ process GATK4_MARKDUPLICATES {
     tuple val(meta), path("*.cram"),    emit: cram,  optional: true
     tuple val(meta), path("*.crai"),    emit: crai,  optional: true
     tuple val(meta), path("*.metrics"), emit: metrics
-    path "versions.yml",                emit: versions
+    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     script:
     def input_list = bam.collect{"--INPUT $it"}.join(' ')
@@ -35,11 +36,5 @@ process GATK4_MARKDUPLICATES {
     samtools view --cram --with-header --threads ${task.cpu} --reference ${fasta} --output ${prefix}.sorted.md.cram ${outfile}
     rm ${outfile}
     samtools index ${prefix}.sorted.md.cram 
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

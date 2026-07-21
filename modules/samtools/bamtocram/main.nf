@@ -17,7 +17,7 @@ process SAMTOOLS_CONVERT {
     tuple val(meta), path("*.cram") , emit: cram,   optional: true
     tuple val(meta), path("*.bai")  , emit: bai ,   optional: true
     tuple val(meta), path("*.crai") , emit: crai,   optional: true
-    path  "versions.yml"            , emit: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -36,11 +36,6 @@ process SAMTOOLS_CONVERT {
         -o ${prefix}.${output_extension}
 
     samtools index -@${task.cpus} ${prefix}.${output_extension}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 
     stub:
@@ -51,10 +46,5 @@ process SAMTOOLS_CONVERT {
     """
     touch ${prefix}.${output_extension}
     touch ${prefix}.${index_extension}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

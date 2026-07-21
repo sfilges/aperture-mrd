@@ -35,7 +35,6 @@ workflow VCF_CONSENSUS {
     _ch_fasta_fai // [meta, fai]
 
     main:
-    ch_versions = channel.empty()
 
     //
     // Prepare LoFreq: select somatic_final SNV VCF only (exclude indels and minus-dbsnp)
@@ -60,10 +59,6 @@ workflow VCF_CONSENSUS {
     NORM_LOFREQ(ch_lofreq_snvs, ch_fasta)
     NORM_MUSE(muse_vcf, ch_fasta)
 
-    ch_versions = ch_versions.mix(NORM_MUTECT2.out.versions)
-    ch_versions = ch_versions.mix(NORM_STRELKA.out.versions)
-    ch_versions = ch_versions.mix(NORM_LOFREQ.out.versions)
-    ch_versions = ch_versions.mix(NORM_MUSE.out.versions)
 
     //
     // Intersect: keep SNVs present in >=2/3 callers
@@ -83,10 +78,8 @@ workflow VCF_CONSENSUS {
 
     // TODO: Need to make sure that the bcftools outpout maintains mutect2 header and depth/QC values.
     BCFTOOLS_ISEC(ch_isec_input, "+2")
-    ch_versions = ch_versions.mix(BCFTOOLS_ISEC.out.versions)
 
     emit:
     compendium_vcf = BCFTOOLS_ISEC.out.vcf // [meta, compendium.isec.vcf.gz]
     compendium_tbi = BCFTOOLS_ISEC.out.tbi // [meta, compendium.isec.vcf.gz.tbi]
-    versions = ch_versions
 }

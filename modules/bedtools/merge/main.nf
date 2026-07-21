@@ -9,7 +9,7 @@ process BEDTOOLS_MERGE {
 
     output:
     tuple val(meta), path('*.bed'), emit: bed
-    path  "versions.yml"          , emit: versions
+    tuple val("${task.process}"), val('bedtools'), eval('bedtools --version | sed -e "s/bedtools v//g"'), emit: versions_bedtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -24,21 +24,11 @@ process BEDTOOLS_MERGE {
         -i $bed \\
         $args \\
         > ${prefix}.bed
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bedtools: \$(bedtools --version | sed -e "s/bedtools v//g")
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.bed
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bedtools: \$(bedtools --version | sed -e "s/bedtools v//g")
-    END_VERSIONS
     """
 }

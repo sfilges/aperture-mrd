@@ -11,7 +11,7 @@ process BCFTOOLS_NORM {
     output:
     tuple val(meta), path("*.norm.vcf.gz")    , emit: vcf
     tuple val(meta), path("*.norm.vcf.gz.tbi"), emit: tbi
-    path "versions.yml"                       , emit: versions
+    tuple val("${task.process}"), val('bcftools'), eval("bcftools --version | head -1 | sed 's/^bcftools //'"), emit: versions_bcftools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -28,11 +28,6 @@ process BCFTOOLS_NORM {
         $vcf
 
     tabix -p vcf ${prefix}.norm.vcf.gz
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bcftools: \$(bcftools --version | head -1 | sed 's/^bcftools //')
-    END_VERSIONS
     """
 
     stub:
@@ -40,10 +35,5 @@ process BCFTOOLS_NORM {
     """
     touch ${prefix}.norm.vcf.gz
     touch ${prefix}.norm.vcf.gz.tbi
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bcftools: \$(bcftools --version | head -1 | sed 's/^bcftools //')
-    END_VERSIONS
     """
 }

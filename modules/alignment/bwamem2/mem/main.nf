@@ -14,11 +14,12 @@ process BWAMEM2_MEM {
     tuple val(meta), path("*.cram") , emit: cram, optional:true
     tuple val(meta), path("*.crai") , emit: crai, optional:true
     tuple val(meta), path("*.csi")  , emit: csi , optional:true
-    path  "versions.yml"            , emit: versions
+    tuple val("${task.process}"), val('bwamem2'), eval("echo \$(bwa-mem2 version 2>&1) | sed 's/.* //'"), emit: versions_bwamem2, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     script:
     def prefix = { params.split_fastq > 1 ? "${meta.id}".concat('.').concat(reads.get(0).name.tokenize('.')[0]) : "${meta.id}.sorted" }()
-    def extra_args = meta.status == 1 ? "-K 100000000 -Y -B 3" : "-K 100000000 -Y"
+    def args = meta.status == 1 ? "-K 100000000 -Y -B 3" : "-K 100000000 -Y"
     def CN = params.seq_center ? "CN:${params.seq_center}\\t" : ''
 
     """
@@ -28,15 +29,9 @@ process BWAMEM2_MEM {
         mem \\
         -R "@RG\\tID:${meta.id}\\t${CN}SM:${meta.id}\\tLB:${meta.id}\\tPL:${params.seq_platform}" \\
         -t $task.cpus \\
-        $extra_args \\
+        $args \\
         \$INDEX \\
         $reads \\
         | samtools sort -@ $task.cpus -O bam -o ${prefix}.bam -
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bwamem2: \$(echo \$(bwa-mem2 version 2>&1) | sed 's/.* //')
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

@@ -25,7 +25,6 @@ nextflow.enable.dsl = 2
 
 include { samplesheetToList } from 'plugin/nf-schema'
 include { validateParameters } from 'plugin/nf-schema'
-include { softwareVersionsToYAML } from './subworkflows/utils'
 include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
 include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
 include { TN_SOMATIC_SNV_CALLING } from './subworkflows/tn_somatic_snv_calling'
@@ -48,8 +47,7 @@ workflow {
         validateParameters()
     }
 
-    // Initilialise versions and reports channels
-    ch_versions = channel.empty()
+    // Initilialise reports channel
     _ch_reports = channel.empty()
 
     ch_multiqc_files = channel.empty()
@@ -122,7 +120,6 @@ workflow {
     )
 
     ch_cram_for_variant_calling = PREPROCESS_GATK.out.cram
-    ch_versions = ch_versions.mix(PREPROCESS_GATK.out.versions)
     ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_GATK.out.reports)
 
     //
@@ -171,7 +168,6 @@ workflow {
         dict,
         germline_resource,
         germline_resource_tbi,
-        ch_versions,
         dbsnp,
         dbsnp_tbi,
         PREPARE_INTERVALS.out.intervals_bed_all,
@@ -184,15 +180,14 @@ workflow {
     // Caller intersection: keep SNVs with >=2/3 caller agreement
     //
     VCF_CONSENSUS(
-        TN_SOMATIC_VARIANT_CALLING.out.mutect2_vcf,
-        TN_SOMATIC_VARIANT_CALLING.out.mutect2_tbi,
-        TN_SOMATIC_VARIANT_CALLING.out.strelka_snvs_vcf,
-        TN_SOMATIC_VARIANT_CALLING.out.lofreq_vcf,
+        TN_SOMATIC_SNV_CALLING.out.mutect2_vcf,
+        TN_SOMATIC_SNV_CALLING.out.mutect2_tbi,
+        TN_SOMATIC_SNV_CALLING.out.strelka_snvs_vcf,
+        TN_SOMATIC_SNV_CALLING.out.lofreq_vcf,
+        TN_SOMATIC_SNV_CALLING.out.muse_vcf,
         ch_fasta,
         ch_fasta_fai,
     )
-
-    ch_versions = ch_versions.mix(VCF_CONSENSUS.out.versions)
 
     //
     // Blacklist filtering + gnomAD common variant exclusion
@@ -213,7 +208,6 @@ workflow {
         germline_resource_tbi,
         ch_blacklists,
     )
-    ch_versions = ch_versions.mix(VCF_FILTER.out.versions)
 
     // TODO: CNA calling with CNVkit
 
@@ -225,7 +219,17 @@ workflow {
     //
     // Collate and save software versions
     //
-    softwareVersionsToYAML(ch_versions)
+    // Versions are emitted by each process onto the global "versions" topic
+    // channel as (process, tool, version) tuples (Nextflow >=25.04).
+    channel.topic('versions')
+        .distinct()
+        .map { process, tool, version ->
+            [process.tokenize(':').last(), "  ${tool}: ${version}"]
+        }
+        .groupTuple()
+        .map { process, tool_versions ->
+            "\"${process}\":\n${tool_versions.unique().sort().join('\n')}"
+        }
         .collectFile(storeDir: "${params.outdir}/${workflow.runName}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
         .set { _ch_collated_versions }
 

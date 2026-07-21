@@ -13,7 +13,7 @@ process STRELKA_SOMATIC {
     tuple val(meta), path("*.somatic_indels.vcf.gz.tbi"), emit: vcf_indels_tbi
     tuple val(meta), path("*.somatic_snvs.vcf.gz")      , emit: vcf_snvs
     tuple val(meta), path("*.somatic_snvs.vcf.gz.tbi")  , emit: vcf_snvs_tbi
-    path "versions.yml"                                 , emit: versions
+    tuple val("${task.process}"), val('strelka'), eval("configureStrelkaSomaticWorkflow.py --version"), emit: versions_strelka, topic: versions
 
     script:
     def args = task.ext.args ?: ''
@@ -38,10 +38,5 @@ process STRELKA_SOMATIC {
     mv strelka/results/variants/somatic.indels.vcf.gz.tbi ${prefix}.somatic_indels.vcf.gz.tbi
     mv strelka/results/variants/somatic.snvs.vcf.gz       ${prefix}.somatic_snvs.vcf.gz
     mv strelka/results/variants/somatic.snvs.vcf.gz.tbi   ${prefix}.somatic_snvs.vcf.gz.tbi
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        strelka: \$( configureStrelkaSomaticWorkflow.py --version )
-    END_VERSIONS
     """
 }

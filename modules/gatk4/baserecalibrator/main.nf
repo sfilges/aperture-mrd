@@ -14,7 +14,7 @@ process GATK4_BASERECALIBRATOR {
 
     output:
     tuple val(meta), path("*.table"), emit: table
-    path "versions.yml"             , emit: versions
+    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
 
     script:
     def args = task.ext.args ?: ''
@@ -36,10 +36,5 @@ process GATK4_BASERECALIBRATOR {
         $sites_command \\
         --tmp-dir . \\
         $args
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-    END_VERSIONS
     """
 }

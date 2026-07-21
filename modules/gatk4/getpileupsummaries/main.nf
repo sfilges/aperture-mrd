@@ -17,7 +17,7 @@ process GATK4_GETPILEUPSUMMARIES {
 
     output:
     tuple val(meta), path('*.pileups.table'), emit: table
-    path "versions.yml"                     , emit: versions
+    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -44,21 +44,11 @@ process GATK4_GETPILEUPSUMMARIES {
         $interval_command \\
         --tmp-dir . \\
         $args
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.pileups.table
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-    END_VERSIONS
     """
 }

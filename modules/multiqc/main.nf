@@ -12,7 +12,7 @@ process MULTIQC {
     path "*multiqc_report.html", emit: report
     path "*_data",               emit: data
     path "*_plots",              emit: plots, optional: true
-    path "versions.yml",         emit: versions
+    tuple val("${task.process}"), val('multiqc'), eval('multiqc --version | sed -e "s/multiqc, version //g"'), emit: versions_multiqc, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -25,10 +25,5 @@ process MULTIQC {
         --force \\
         $args \\
         .
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        multiqc: \$(multiqc --version | sed -e "s/multiqc, version //g")
-    END_VERSIONS
     """
 }

@@ -10,7 +10,7 @@ process SAMBAMBA_MARKDUP {
     output:
     tuple val(meta), path("*.bam"), emit: bam
     tuple val(meta), path("*.bai"), emit: bai, optional: true
-    path "versions.yml"           , emit: versions
+    tuple val("${task.process}"), val('sambamba'), eval("echo \$(sambamba --version 2>&1) | awk '{print \$2}'"), emit: versions_sambamba, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -27,10 +27,5 @@ process SAMBAMBA_MARKDUP {
         --tmpdir ./ \\
         $bam \\
         ${prefix}.bam
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        sambamba: \$(echo \$(sambamba --version 2>&1) | awk '{print \$2}' )
-    END_VERSIONS
     """
 }

@@ -26,7 +26,6 @@ workflow TN_SOMATIC_SNV_CALLING {
     dict
     germline_resource
     germline_resource_tbi
-    versions
     dbsnp
     dbsnp_tbi
     _intervals_bed_all
@@ -160,17 +159,17 @@ workflow TN_SOMATIC_SNV_CALLING {
     )
 
     // =========================================================================
-    // LOFREQ
+    // LOFREQ (deprecated)
     // =========================================================================
 
     // TODO: Convert CRAM to BAM for LOFREQ_SOMATIC and MUSE_SOMATIC
-    LOFREQ_SOMATIC(
-        cram_variant_calling_pair,
-        ch_fasta,
-        ch_fasta_fai,
-        dbsnp,
-        dbsnp_tbi,
-    )
+    //LOFREQ_SOMATIC(
+    //    cram_variant_calling_pair,
+    //    ch_fasta,
+    //    ch_fasta_fai,
+    //    dbsnp,
+    //    dbsnp_tbi,
+    //)
 
     //
     // MUSE
@@ -185,16 +184,6 @@ workflow TN_SOMATIC_SNV_CALLING {
     // COLLECT OUTPUTS
     // =========================================================================
 
-    versions = versions.mix(MUTECT2_SOMATIC.out.versions)
-    versions = versions.mix(MERGE_MUTECT2.out.versions)
-    versions = versions.mix(MERGEMUTECTSTATS.out.versions)
-    versions = versions.mix(LEARNREADORIENTATIONMODEL.out.versions)
-    versions = versions.mix(GETPILEUPSUMMARIES_TUMOR.out.versions)
-    versions = versions.mix(CALCULATECONTAMINATION.out.versions)
-    versions = versions.mix(FILTERMUTECTCALLS.out.versions)
-    versions = versions.mix(MANTA_SOMATIC.out.versions)
-    versions = versions.mix(STRELKA_SOMATIC.out.versions)
-    versions = versions.mix(LOFREQ_SOMATIC.out.versions)
 
     emit:
     mutect2_vcf = FILTERMUTECTCALLS.out.vcf // [meta, filtered.vcf.gz]
@@ -205,6 +194,5 @@ workflow TN_SOMATIC_SNV_CALLING {
     strelka_indels_vcf = STRELKA_SOMATIC.out.vcf_indels // [meta, somatic_indels.vcf.gz]
     strelka_indels_tbi = STRELKA_SOMATIC.out.vcf_indels_tbi // [meta, somatic_indels.vcf.gz.tbi]
     manta_sv_vcf = MANTA_SOMATIC.out.somatic_sv_vcf // [meta, somaticSV.vcf.gz]
-    lofreq_vcf = LOFREQ_SOMATIC.out.vcf // [meta, *.vcf.gz]
-    versions = versions
+    //lofreq_vcf = LOFREQ_SOMATIC.out.vcf // [meta, *.vcf.gz]
 }

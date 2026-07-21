@@ -4,19 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-/*
- * Collect software version YAML files from all processes,
- * deduplicate, and return their text content as a channel.
- *
- * Usage in workflow:
- *   softwareVersionsToYAML(ch_versions)
- *       .collectFile(storeDir: "...", name: 'versions.yml', sort: true, newLine: true)
- *
- * Input:  Channel of versions.yml file paths emitted by individual processes
- * Output: Channel of YAML text strings (one per unique versions.yml)
- */
-def softwareVersionsToYAML(ch_versions) {
-    return ch_versions
-        .unique()
-        .map { versions_yml -> versions_yml.text }
-}
+// Software versions are now collected via the global "versions" topic channel
+// (Nextflow >=25.04). Each process emits (process, tool, version) tuples with
+// `topic: versions`, which are gathered directly in main.nf. The previous
+// file-based `softwareVersionsToYAML` helper is no longer needed.

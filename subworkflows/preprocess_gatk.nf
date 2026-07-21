@@ -22,6 +22,7 @@ include { GATK4_APPLYBQSR } from '../modules/gatk4/applybqsr/main'
 include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
 include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
 include { MOSDEPTH } from '../modules/mosdepth/main'
+include { RIKER_MULTI } from '../modules/fulcrum/riker/main'
 
 workflow PREPROCESS_GATK {
     take:
@@ -33,14 +34,12 @@ workflow PREPROCESS_GATK {
     known_sites_indels_tbi // [path(tbi), ...]
 
     main:
-    ch_versions = channel.empty()
     ch_reports = channel.empty()
 
     //
     // FastQC on raw reads
     //
     FASTQC_RAW(ch_reads)
-    ch_versions = ch_versions.mix(FASTQC_RAW.out.versions)
     ch_reports = ch_reports.mix(FASTQC_RAW.out.zip.collect { it -> it[1] }.ifEmpty([]))
 
     //
@@ -54,7 +53,6 @@ workflow PREPROCESS_GATK {
         params.length_required,
         params.save_fastqs,
     )
-    ch_versions = ch_versions.mix(FASTP.out.versions)
     ch_reports = ch_reports.mix(FASTP.out.json.collect { it -> it[1] }.ifEmpty([]))
 
     // Handle split FASTQs: collate paired reads and transpose for per-chunk alignment
@@ -86,7 +84,6 @@ workflow PREPROCESS_GATK {
         else {
             BWA_INDEX(ch_fasta)
             ch_index = BWA_INDEX.out.index
-            ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
         }
 
         BWA_MEM(
@@ -95,7 +92,6 @@ workflow PREPROCESS_GATK {
         )
 
         ch_aligned_bams = BWA_MEM.out.bam
-        ch_versions = ch_versions.mix(BWA_MEM.out.versions)
     }
     else if (params.aligner == 'bwamem2') {
         if (params.bwamem2index) {
@@ -106,7 +102,6 @@ workflow PREPROCESS_GATK {
         else {
             BWAMEM2_INDEX(ch_fasta)
             ch_index = BWAMEM2_INDEX.out.index
-            ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
         }
 
         BWAMEM2_MEM(
@@ -116,7 +111,10 @@ workflow PREPROCESS_GATK {
         )
 
         ch_aligned_bams = BWAMEM2_MEM.out.bam
-        ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
+    }
+    else if (params.aligner == 'minibwa') {
+        // TODO: Add parabricks alignment
+        error("minibwa aligner is not yet implemented.")
     }
     else if (params.aligner == 'parabricks') {
         // TODO: Add parabricks alignment
@@ -129,6 +127,7 @@ workflow PREPROCESS_GATK {
     //
     // Group split BAMs back by sample before deduplication
     //
+    // TODO: Make cram default output from aligners via samtools and rename?
     bam_grouped = ch_aligned_bams
         .map { meta, bam ->
             [groupKey(meta, meta.n_fastq), bam]
@@ -138,12 +137,12 @@ workflow PREPROCESS_GATK {
     //
     // Mark Duplicates
     //
+    // TODO: Replace with faster samtools or sambamba? Can they take multi-file input?
     GATK4_MARKDUPLICATES(
         bam_grouped,
         ch_fasta,
         ch_fasta_fai,
     )
-    ch_versions = ch_versions.mix(GATK4_MARKDUPLICATES.out.versions)
 
     //
     // Base Quality Score Recalibration
@@ -156,7 +155,6 @@ workflow PREPROCESS_GATK {
         known_sites_indels,
         known_sites_indels_tbi,
     )
-    ch_versions = ch_versions.mix(GATK4_BASERECALIBRATOR.out.versions)
     ch_reports = ch_reports.mix(GATK4_BASERECALIBRATOR.out.table.collect { _meta, table -> [table] })
 
     // Join CRAM with recalibration table for ApplyBQSR
@@ -168,7 +166,6 @@ workflow PREPROCESS_GATK {
         ch_fasta_fai,
         dict,
     )
-    ch_versions = ch_versions.mix(GATK4_APPLYBQSR.out.versions)
 
     //
     // Index recalibrated CRAM
@@ -187,19 +184,12 @@ workflow PREPROCESS_GATK {
         .map { meta, cram, crai -> [meta, cram, crai] }
 
     //
-    // Alignment QC — samtools stats + mosdepth
+    // Alignment QC — riker
     //
-    SAMTOOLS_STATS(ch_cram, ch_fasta)
-    ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
-    ch_reports = ch_reports.mix(SAMTOOLS_STATS.out.stats.collect { _meta, stats -> [stats] })
-
-    MOSDEPTH(ch_cram, ch_fasta)
-    ch_versions = ch_versions.mix(MOSDEPTH.out.versions)
-    ch_reports = ch_reports.mix(MOSDEPTH.out.global_txt.collect { _meta, global_txt -> [global_txt] })
-    ch_reports = ch_reports.mix(MOSDEPTH.out.regions_txt.collect { _meta, regions_txt -> [regions_txt] })
+    RIKER_MULTI(ch_cram, ch_fasta, ch_fasta_fai)
+    // TODO: Add reports to output channel
 
     emit:
     cram = ch_cram // [meta, cram, crai] — recalibrated, indexed
     reports = ch_reports // channel of QC files for MultiQC
-    versions = ch_versions // channel of versions.yml
 }

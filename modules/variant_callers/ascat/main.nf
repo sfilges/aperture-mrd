@@ -25,7 +25,8 @@ process ASCAT {
     tuple val(meta), path("*png"),                             emit: png
     tuple val(meta), path("*purityploidy.txt"),                emit: purityploidy
     tuple val(meta), path("*segments.txt"),                    emit: segments
-    path "versions.yml",                                       emit: versions
+    tuple val("${task.process}"), val('alleleCounter'), eval("alleleCounter --version"), emit: versions_allelecounter, topic: versions
+    tuple val("${task.process}"), val('ascat'), val('3.0.0'), emit: versions_ascat, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -157,15 +158,6 @@ process ASCAT {
 
     write.table(QC, file=paste0("$prefix", ".metrics.txt"), sep="\t", quote=F, row.names=F)
 
-    # version export
-    f <- file("versions.yml","w")
-    alleleCounter_version = system(paste("alleleCounter --version"), intern = T)
-    ascat_version = sessionInfo()\$otherPkgs\$ASCAT\$Version
-    writeLines(paste0('"', "$task.process", '"', ":"), f)
-    writeLines(paste("    alleleCounter:", alleleCounter_version), f)
-    writeLines(paste("    ascat:", ascat_version), f)
-    close(f)
-
     """
 
     stub:
@@ -189,10 +181,6 @@ process ASCAT {
     echo stub > ${prefix}.tumour_normalLogR.txt
     echo stub > ${prefix}.tumour_tumourBAF.txt
     echo stub > ${prefix}.tumour_tumourLogR.txt
-
-    echo "${task.process}:" > versions.yml
-    echo ' alleleCounter: 4.3.0' >> versions.yml
-    echo ' ascat: 3.0.0' >> versions.yml
 
     """
 

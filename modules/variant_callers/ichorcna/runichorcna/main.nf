@@ -16,7 +16,7 @@ process ICHORCNA_RUN {
     tuple val(meta), path("*.cna.seg")    , emit: cna_seg
     tuple val(meta), path("*.params.txt") , emit: ichorcna_params
     path "*genomeWide.pdf"                , emit: genome_plot
-    path "versions.yml"                   , emit: versions
+    tuple val("${task.process}"), val('ichorcna'), val('0.3.2'), emit: versions_ichorcna, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -26,7 +26,6 @@ process ICHORCNA_RUN {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def pon = panel_of_normals ? "--normalPanel ${panel_of_normals}" : ''
     def centro = centromere ? "--centromere ${centromere}" : ''
-    def VERSION = '0.3.2' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
     runIchorCNA.R \\
         $args \\
@@ -39,10 +38,5 @@ process ICHORCNA_RUN {
         --outDir .
 
     cp */*genomeWide.pdf .
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        ichorcna: $VERSION
-    END_VERSIONS
     """
 }

@@ -30,7 +30,6 @@ workflow VCF_FILTER {
     blacklists // [bed1, bed2, ...] collected
 
     main:
-    ch_versions = channel.empty()
 
     // ──────────────────────────────────────────────────────────────────────
     // Stage 1 — BED blacklist exclusion
@@ -40,13 +39,10 @@ workflow VCF_FILTER {
     ch_beds = channel.value([["id": "blacklist"], blacklists])
 
     BEDTOOLS_CONCAT(ch_beds)
-    ch_versions = ch_versions.mix(BEDTOOLS_CONCAT.out.versions)
 
     BEDTOOLS_SORT(BEDTOOLS_CONCAT.out.bed, [])
-    ch_versions = ch_versions.mix(BEDTOOLS_SORT.out.versions)
 
     BEDTOOLS_MERGE(BEDTOOLS_SORT.out.sorted)
-    ch_versions = ch_versions.mix(BEDTOOLS_MERGE.out.versions)
 
     // Join VCF + TBI, then exclude blacklisted regions
     ch_view_input = compendium_vcf.join(compendium_tbi, failOnDuplicate: true, failOnMismatch: true)
@@ -55,7 +51,6 @@ workflow VCF_FILTER {
         ch_view_input,
         BEDTOOLS_MERGE.out.bed.map { _meta, bed -> bed },
     )
-    ch_versions = ch_versions.mix(BCFTOOLS_VIEW.out.versions)
 
     // ──────────────────────────────────────────────────────────────────────
     // Stage 2 — gnomAD common variant exclusion
@@ -73,10 +68,8 @@ workflow VCF_FILTER {
         }
 
     GNOMAD_ISEC(ch_gnomad_isec_input, "--complement")
-    ch_versions = ch_versions.mix(GNOMAD_ISEC.out.versions)
 
     emit:
     vcf = GNOMAD_ISEC.out.vcf // [meta, compendium.filtered.vcf.gz]
     tbi = GNOMAD_ISEC.out.tbi // [meta, compendium.filtered.vcf.gz.tbi]
-    versions = ch_versions
 }

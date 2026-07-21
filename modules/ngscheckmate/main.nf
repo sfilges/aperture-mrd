@@ -14,7 +14,7 @@ process NGSCHECKMATE {
     tuple val(meta), path("*_all.txt")        , emit: all
     tuple val(meta), path("*.pdf")            , emit: pdf, optional: true
     tuple val(meta), path("*.vcf")            , emit: vcf, optional: true
-    path "versions.yml"     , emit: versions
+    tuple val("${task.process}"), val('ngscheckmate'), eval('ncm.py --help | sed "7!d;s/ *Ensuring Sample Identity v//g"'), emit: versions_ngscheckmate, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -37,11 +37,6 @@ process NGSCHECKMATE {
     then
         rm -f *.vcf  # clean up decompressed vcfs
     fi
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        ngscheckmate: \$(ncm.py --help | sed "7!d;s/ *Ensuring Sample Identity v//g")
-    END_VERSIONS
     """
 
     stub:
@@ -51,11 +46,6 @@ process NGSCHECKMATE {
     touch ${prefix}_matched.txt
     touch ${prefix}_all.txt
     touch ${prefix}.pdf
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        ngscheckmate: \$(ncm.py --help | sed "7!d;s/ *Ensuring Sample Identity v//g")
-    END_VERSIONS
     """
 
 }

@@ -10,7 +10,7 @@ process BCFTOOLS_CONCAT {
     output:
     tuple val(meta), path("*.concat.vcf.gz")    , emit: vcf
     tuple val(meta), path("*.concat.vcf.gz.tbi"), emit: tbi
-    path "versions.yml"                         , emit: versions
+    tuple val("${task.process}"), val('bcftools'), eval("bcftools --version | head -1 | sed 's/^bcftools //'"), emit: versions_bcftools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -31,11 +31,6 @@ process BCFTOOLS_CONCAT {
         -Ou | bcftools sort -Oz -o ${prefix}.concat.vcf.gz
 
     tabix -p vcf ${prefix}.concat.vcf.gz
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bcftools: \$(bcftools --version | head -1 | sed 's/^bcftools //')
-    END_VERSIONS
     """
 
     stub:
@@ -43,10 +38,5 @@ process BCFTOOLS_CONCAT {
     """
     touch ${prefix}.concat.vcf.gz
     touch ${prefix}.concat.vcf.gz.tbi
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bcftools: \$(bcftools --version | head -1 | sed 's/^bcftools //')
-    END_VERSIONS
     """
 }

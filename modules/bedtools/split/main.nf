@@ -10,7 +10,7 @@ process BEDTOOLS_SPLIT {
 
     output:
     tuple val(meta), path("*.bed"), emit: beds
-    path "versions.yml"           , emit: versions
+    tuple val("${task.process}"), val('bedtools'), eval('bedtools --version | sed -e "s/bedtools v//g"'), emit: versions_bedtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -25,10 +25,5 @@ process BEDTOOLS_SPLIT {
         -n ${count} \\
         -i ${bed} \\
         -p ${prefix}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bedtools: \$(bedtools --version | sed -e "s/bedtools v//g")
-    END_VERSIONS
     """
 }

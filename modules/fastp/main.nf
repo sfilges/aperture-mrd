@@ -20,7 +20,7 @@ process FASTP {
     tuple val(meta), path('*.json')             , emit: json
     tuple val(meta), path('*.html')             , emit: html
     tuple val(meta), path('*.log')              , emit: log
-    path "versions.yml"                         , emit: versions
+    tuple val("${task.process}"), val('fastp'), eval('fastp --version 2>&1 | sed -e "s/fastp //g"'), emit: versions_fastp, topic: versions
     tuple val(meta), path('*_merged.fastq.gz'), optional:true, emit: reads_merged
 
     script:
@@ -48,11 +48,5 @@ process FASTP {
         --detect_adapter_for_pe \\
         $args \\
         2> >(tee ${prefix}.fastp.log >&2)
-
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        fastp: \$(fastp --version 2>&1 | sed -e "s/fastp //g")
-    END_VERSIONS
     """
 }

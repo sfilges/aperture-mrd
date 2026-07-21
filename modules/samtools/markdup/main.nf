@@ -16,7 +16,7 @@ process SAMTOOLS_MARKDUP {
     tuple val(meta), path("*.cram"),    emit: cram
     tuple val(meta), path("*.crai"),    emit: crai
     tuple val(meta), path("*.metrics"), emit: metrics
-    path "versions.yml",                emit: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -37,10 +37,5 @@ process SAMTOOLS_MARKDUP {
             - ${prefix}.sorted.md.cram
 
     samtools index -@${task.cpus} ${prefix}.sorted.md.cram
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

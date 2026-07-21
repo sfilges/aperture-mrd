@@ -10,7 +10,8 @@ process BWA_MEM {
 
     output:
     tuple val(meta), path("*.bam"), emit: bam, optional: true
-    path "versions.yml",            emit: versions
+    tuple val("${task.process}"), val('bwa'), eval("echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact.*\$//'"), emit: versions_bwa, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -31,11 +32,5 @@ process BWA_MEM {
         \$INDEX \\
         $reads \\
         | samtools sort -@ $task.cpus -O bam -o ${prefix}.bam -
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bwa: \$(echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact.*\$//')
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
-    END_VERSIONS
     """
 }

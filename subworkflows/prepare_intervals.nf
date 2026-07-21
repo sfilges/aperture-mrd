@@ -24,7 +24,6 @@ workflow PREPARE_INTERVALS {
 
     main:
 
-    ch_versions = channel.empty()
 
     // Create the intervals channel from the provided BED file
     // If no intervals file is provided, create one from the .fai
@@ -55,7 +54,6 @@ workflow PREPARE_INTERVALS {
 
     // bgzip + tabix the full BED for tools like Manta
     TABIX_ALL(ch_intervals_bed)
-    ch_versions = ch_versions.mix(TABIX_ALL.out.versions)
 
     intervals_bed_bgz_tbi_all = TABIX_ALL.out.gz_tbi
 
@@ -64,7 +62,6 @@ workflow PREPARE_INTERVALS {
         ch_intervals_bed,
         params.n_interval_splits ?: 10,
     )
-    ch_versions = ch_versions.mix(BEDTOOLS_SPLIT.out.versions)
 
     // Flatten the split BEDs into individual [meta, bed] tuples
     intervals_bed_split = BEDTOOLS_SPLIT.out.beds.flatMap { _meta, beds ->
@@ -75,7 +72,6 @@ workflow PREPARE_INTERVALS {
 
     // bgzip + tabix each split BED for Strelka2
     TABIX_SPLIT(intervals_bed_split)
-    ch_versions = ch_versions.mix(TABIX_SPLIT.out.versions)
 
     intervals_bed_bgz_tbi_split = TABIX_SPLIT.out.gz_tbi
 
@@ -84,5 +80,4 @@ workflow PREPARE_INTERVALS {
     intervals_bed_bgz_tbi_all = intervals_bed_bgz_tbi_all
     intervals_bed_split = intervals_bed_split
     intervals_bed_bgz_tbi_split = intervals_bed_bgz_tbi_split
-    versions = ch_versions
 }
