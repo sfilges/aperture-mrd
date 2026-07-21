@@ -40,13 +40,13 @@ process FASTP {
         --out2 ${prefix}_2_fastp.fastq.gz \\
         --json ${prefix}.fastp.json \\
         --html ${prefix}.fastp.html \\
-        $min_length \\
-        $merge_fastq \\
+        ${min_length} \\
+        ${merge_fastq} \\
         ${chunk_fastq} \\
-        $trim_poly_g \\
-        --thread $task.cpus \\
+        ${trim_poly_g} \\
+        --thread ${task.cpus} \\
         --detect_adapter_for_pe \\
-        $args \\
+        ${args} \\
         2> >(tee ${prefix}.fastp.log >&2)
     """
 }

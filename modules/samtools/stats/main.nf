@@ -2,7 +2,7 @@ process SAMTOOLS_STATS {
     tag "$meta.id"
     label 'process_single'
 
-    container 'biocontainers/samtools:1.19.2--h50ea8bc_0'
+    container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
     publishDir "${params.outdir}/${workflow.runName}/reports/samtools/${meta.id}", mode: params.publish_dir_mode
 

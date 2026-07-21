@@ -2,7 +2,7 @@ process SAMTOOLS_INDEX {
     tag "$meta.id"
     label 'process_low'
 
-    container 'biocontainers/samtools:1.19.2--h50ea8bc_0'
+    container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
     input:
     tuple val(meta), path(input)

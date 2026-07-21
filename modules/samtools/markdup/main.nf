@@ -2,7 +2,7 @@ process SAMTOOLS_MARKDUP {
     tag "$meta.id"
     label 'process_medium'
 
-    container 'biocontainers/samtools:1.19.2--h50ea8bc_0'
+    container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
     publishDir "${params.outdir}/${workflow.runName}/preprocessing/markduplicates/${meta.id}/", mode: params.publish_dir_mode, pattern: "*.{cram,crai}"
     publishDir "${params.outdir}/${workflow.runName}/reports/", mode: params.publish_dir_mode, pattern: "*.metrics"

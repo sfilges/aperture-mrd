@@ -57,6 +57,8 @@ workflow {
     // samplesheet file.
     ch_samplesheet = channel.fromList(samplesheetToList(params.input, "assets/schema_input.json"))
         .map { meta, fastq1, fastq2 ->
+            def CN = params.seq_center ? "CN:${params.seq_center}\t" : ''
+            meta = meta + [read_group: "@RG\tID:${meta.id}\t${CN}SM:${meta.id}\tLB:${meta.id}\tPL:${params.seq_platform}"]
             // structure the output depending on the input
             if (fastq2) {
                 [meta, [fastq1, fastq2]]

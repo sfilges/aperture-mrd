@@ -1,9 +1,9 @@
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    PREPROCESS_READS Subworkflow
+    FAST PREPROCESS_READS Subworkflow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Encapsulates the full read preprocessing chain:
-      FastQC → fastp → alignment (BWA/BWA-MEM2) → MarkDuplicates → BQSR → indexing → QC
+      FastQC → fastp → alignment (BWA-MEM3/minibwa) → MarkDuplicates → indexing → QC
 
     Sample-type agnostic: tumor, normal, and plasma samples all pass through
     the same subworkflow. Branching by meta.status happens in main.nf.
@@ -16,15 +16,13 @@ include { BWA_INDEX } from '../modules/bwamem/index/main'
 include { BWA_MEM } from '../modules/bwamem/mem/main'
 include { BWAMEM2_INDEX } from '../modules/bwamem2/index/main'
 include { BWAMEM2_MEM } from '../modules/bwamem2/mem/main'
-include { GATK4_MARKDUPLICATES } from '../modules/gatk4/markduplicates/main'
-include { GATK4_BASERECALIBRATOR } from '../modules/gatk4/baserecalibrator/main'
-include { GATK4_APPLYBQSR } from '../modules/gatk4/applybqsr/main'
+include { SAMTOOLS_MERGE } from '../modules/samtools/merge/main'
+include { SAMTOOLS_MARDKDUP } from '../modules/samtools/markdup/main'
 include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
 include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
-include { MOSDEPTH } from '../modules/mosdepth/main'
 include { RIKER_MULTI } from '../modules/fulcrum/riker/main'
 
-workflow PREPROCESS_GATK {
+workflow PREPROCESS_FAST {
     take:
     ch_reads // [meta, [fastq1, fastq2]]
     ch_fasta // [meta, fasta]
@@ -128,7 +126,6 @@ workflow PREPROCESS_GATK {
     //
     // Group split BAMs back by sample before deduplication
     //
-    // TODO: Make cram default output from aligners via samtools and rename?
     bam_grouped = ch_aligned_bams
         .map { meta, bam ->
             [groupKey(meta, meta.n_fastq), bam]
@@ -138,9 +135,11 @@ workflow PREPROCESS_GATK {
     //
     // Mark Duplicates
     //
-    // TODO: Replace with faster samtools or sambamba? Can they take multi-file input?
-    GATK4_MARKDUPLICATES(
-        bam_grouped,
+    // SAMTOOLS_MARDKDUP requires alignment files to be merged; GATK4_MARKDUPLICATES can take a list of files
+    SAMTOOLS_MERGE(bam_grouped)
+
+    SAMTOOLS_MARDKDUP(
+        SAMTOOLS_MERGE.out.cram,
         ch_fasta,
         ch_fasta_fai,
     )
@@ -154,11 +153,11 @@ workflow PREPROCESS_GATK {
     // Index recalibrated CRAM
     //
     INDEX_CRAM(
-        GATK4_MARKDUPLICATES.out.cram
+        SAMTOOLS_MARDKDUP.out.cram
     )
 
     // Join CRAM with index → [meta, cram, crai]
-    ch_cram = GATK4_MARKDUPLICATES.out.cram
+    ch_cram = SAMTOOLS_MARDKDUP.out.cram
         .join(
             INDEX_CRAM.out.crai,
             failOnDuplicate: true,
@@ -173,6 +172,6 @@ workflow PREPROCESS_GATK {
     // TODO: Add reports to output channel
 
     emit:
-    cram = ch_cram // [meta, cram, crai] — recalibrated, indexed
+    cram = ch_cram // [meta, cram, crai] — duplicate_marked, indexed
     reports = ch_reports // channel of QC files for MultiQC
 }

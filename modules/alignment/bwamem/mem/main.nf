@@ -19,14 +19,12 @@ process BWA_MEM {
     script:
     def prefix = { params.split_fastq > 1 ? "${meta.id}".concat('.').concat(reads.get(0).name.tokenize('.')[0]) : "${meta.id}.sorted" }()
     def extra_args = meta.status == 1 ? "-K 100000000 -Y -B 3" : "-K 100000000 -Y"
-    def CN = params.seq_center ? "CN:${params.seq_center}\\t" : ''
-
     """
     INDEX=`find -L ./ -name "*.amb" | sed 's/\\.amb\$//'`
 
     bwa \\
         mem \\
-        -R "@RG\\tID:${meta.id}\\t${CN}SM:${meta.id}\\tLB:${meta.id}\\tPL:${params.seq_platform}" \\
+        -R "${meta.read_group}" \\
         -t $task.cpus \\
         $extra_args \\
         \$INDEX \\

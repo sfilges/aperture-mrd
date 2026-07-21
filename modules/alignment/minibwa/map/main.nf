@@ -8,6 +8,8 @@ process MINIBWA_MAP {
     input:
     tuple val(meta), path(reads)
     tuple val(meta2), path(index)
+    tuple val(meta3), path(fasta)
+    tuple val(meta4), path(fai)
 
     output:
     tuple val(meta), path("*.{bam,cram}"), emit: aligned
@@ -21,17 +23,16 @@ process MINIBWA_MAP {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def CN = params.seq_center ? "CN:${params.seq_center}\\t" : ''
     """
     INDEX=`find -L ./ -name "*.l2b" | sed 's/\\.l2b\$//'`
 
     minibwa \\
         map \\
-        -R "@RG\\tID:${meta.id}\\t${CN}SM:${meta.id}\\tLB:${meta.id}\\tPL:${params.seq_platform}" \\
+        -R "${meta.read_group}" \\
         ${args} \\
         -t ${task.cpus} \\
         \$INDEX \\
         ${reads} \\
-        | samtools sort -@ ${task.cpus} -O bam -o ${prefix}.bam -
+        | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
 }
