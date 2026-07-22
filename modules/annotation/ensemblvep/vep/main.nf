@@ -2,16 +2,15 @@ process ENSEMBLVEP_VEP {
     tag "$meta.id"
     label 'process_medium'
 
-    container 'biocontainers/ensembl-vep:111.0--pl5321h2a3209d_0'
+    container 'biocontainers/ensembl-vep:116.0--pl5321h2a3209d_0'
 
     input:
-    tuple val(meta), path(vcf), path(custom_extra_files)
+    tuple val(meta), path(vcf)
     val   genome
     val   species
     val   cache_version
     path  cache
     tuple val(meta2), path(fasta)
-    path  extra_files
 
     output:
     tuple val(meta), path("*.vcf.gz")  , optional:true, emit: vcf
