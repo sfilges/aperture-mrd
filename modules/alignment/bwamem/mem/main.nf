@@ -7,9 +7,11 @@ process BWA_MEM {
     input:
     tuple val(meta), path(reads)
     tuple val(meta2), path(index)
+    tuple val(meta3), path(fasta)
 
     output:
-    tuple val(meta), path("*.bam"), emit: bam, optional: true
+    tuple val(meta), path("*.{bam,cram}"), emit: cram
+    tuple val(meta), path("*.{bai,csi,crai}"), emit: index, optional: true
     tuple val("${task.process}"), val('bwa'), eval("echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact.*\$//'"), emit: versions_bwa, topic: versions
     tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
 
@@ -29,6 +31,6 @@ process BWA_MEM {
         $extra_args \\
         \$INDEX \\
         $reads \\
-        | samtools sort -@ $task.cpus -O bam -o ${prefix}.bam -
+        | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
 }

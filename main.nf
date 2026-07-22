@@ -25,7 +25,9 @@ nextflow.enable.dsl = 2
 
 include { samplesheetToList } from 'plugin/nf-schema'
 include { validateParameters } from 'plugin/nf-schema'
+include { PREPARE_GENOME } from './subworkflows/prepare_genome'
 include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
+include { PREPROCESS_FAST } from './subworkflows/preprocess_fast'
 include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
 include { TN_SOMATIC_SNV_CALLING } from './subworkflows/tn_somatic_snv_calling'
 include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
@@ -73,17 +75,13 @@ workflow {
     //
     // Prepare all input files
     //
-
-    // TODO Add prepare genomes subworkflow to prepare reference files 
-    // to have them available for all downstream processes.
-
-    // Get reference file in fasta format
-    ch_fasta = channel.value(
-        [["id": "fasta"], file(params.fasta, checkIfExists: true)]
-    )
-
-    ch_fasta_fai = channel.value(
-        [["id": "fasta_fai"], file("${params.fasta}.fai", checkIfExists: true)]
+    PREPARE_GENOME(
+        params.fasta,
+        params.fai,
+        params.bwa_index,
+        params.bwamem2_index,
+        params.bwamem3_index,
+        params.minibwa_index,
     )
 
     // Create known sites channels (collect once, reuse multiple times)
@@ -99,30 +97,54 @@ workflow {
     // TODO Intervals file is split up into multiple bed files for scatter/gather & grouping together small intervals
 
     PREPARE_INTERVALS(
-        params.fai,
+        PREPARE_GENOME.out.fai,
         params.intervals,
         [],
     )
 
-    // Combine known sites and dict — needed by PREPROCESS_READS and variant calling
+    // Combine known sites and dict — needed by PREPROCESS_GATK and variant calling
     known_sites_indels = dbsnp.concat(known_indels).collect()
     known_sites_indels_tbi = dbsnp_tbi.concat(known_indels_tbi).collect()
     dict = channel.fromPath(params.dict, checkIfExists: true).collect()
 
     //
-    // Preprocessing: FastQC → fastp → alignment → MarkDuplicates → BQSR → QC
+    // Preprocessing: fast of gatk
     //
-    PREPROCESS_GATK(
-        ch_samplesheet,
-        ch_fasta,
-        ch_fasta_fai,
-        dict,
-        known_sites_indels,
-        known_sites_indels_tbi,
-    )
+    if (params.preprocessing == "fast"){
 
-    ch_cram_for_variant_calling = PREPROCESS_GATK.out.cram
-    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_GATK.out.reports)
+        if (params.aligner in ['bwamem', 'bwamem2']) {
+            log.warn "preprocessing='fast' with aligner='${params.aligner}': fast mode is tuned for bwamem3/minibwa; '${params.aligner}' will run but may be suboptimal."
+        }
+
+        // FastQC → fastp → alignment → MarkDuplicates → QC
+        PREPROCESS_FAST(
+            ch_samplesheet,
+            PREPARE_GENOME.out.fasta,
+            PREPARE_GENOME.out.fai,
+            PREPARE_GENOME.out.index,
+        )
+
+        ch_cram_for_variant_calling = PREPROCESS_FAST.out.cram
+        ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_FAST.out.reports)
+
+    } else if (params.preprocessing == "gatk") {
+
+        // FastQC → fastp → alignment → MarkDuplicates → BQSR → QC
+        PREPROCESS_GATK(
+            ch_samplesheet,
+            PREPARE_GENOME.out.fasta,
+            PREPARE_GENOME.out.fai,
+            PREPARE_GENOME.out.index,
+            dict,
+            known_sites_indels,
+            known_sites_indels_tbi,
+        )
+
+        ch_cram_for_variant_calling = PREPROCESS_GATK.out.cram
+        ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_GATK.out.reports)
+    } else {
+        error("Unknown preprocessing mode: ${params.preprocessing}")
+    }
 
     //
     // Logic to combine tumor-normal pairs. Does *not* work for tumor only or germline only samples!
@@ -165,8 +187,8 @@ workflow {
 
     TN_SOMATIC_SNV_CALLING(
         cram_variant_calling_pair,
-        ch_fasta,
-        ch_fasta_fai,
+        PREPARE_GENOME.out.fasta,
+        PREPARE_GENOME.out.fai,
         dict,
         germline_resource,
         germline_resource_tbi,
@@ -187,8 +209,8 @@ workflow {
         TN_SOMATIC_SNV_CALLING.out.strelka_snvs_vcf,
         TN_SOMATIC_SNV_CALLING.out.lofreq_vcf,
         TN_SOMATIC_SNV_CALLING.out.muse_vcf,
-        ch_fasta,
-        ch_fasta_fai,
+        PREPARE_GENOME.out.fasta,
+        PREPARE_GENOME.out.fai,
     )
 
     //

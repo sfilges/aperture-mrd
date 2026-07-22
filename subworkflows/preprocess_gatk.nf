@@ -3,7 +3,7 @@
     PREPROCESS_READS Subworkflow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Encapsulates the full read preprocessing chain:
-      FastQC → fastp → alignment (BWA/BWA-MEM2) → MarkDuplicates → BQSR → indexing → QC
+      FastQC → fastp → alignment → MarkDuplicates → BQSR → indexing → QC
 
     Sample-type agnostic: tumor, normal, and plasma samples all pass through
     the same subworkflow. Branching by meta.status happens in main.nf.
@@ -12,10 +12,7 @@
 
 include { FASTQC as FASTQC_RAW } from '../modules/fastqc/main'
 include { FASTP } from '../modules/fastp/main'
-include { BWA_INDEX } from '../modules/bwamem/index/main'
-include { BWA_MEM } from '../modules/bwamem/mem/main'
-include { BWAMEM2_INDEX } from '../modules/bwamem2/index/main'
-include { BWAMEM2_MEM } from '../modules/bwamem2/mem/main'
+include { PREPROCESS_ALIGN } from '../subworkflows/preprocess_align'
 include { GATK4_MARKDUPLICATES } from '../modules/gatk4/markduplicates/main'
 include { GATK4_BASERECALIBRATOR } from '../modules/gatk4/baserecalibrator/main'
 include { GATK4_APPLYBQSR } from '../modules/gatk4/applybqsr/main'
@@ -29,6 +26,7 @@ workflow PREPROCESS_GATK {
     ch_reads // [meta, [fastq1, fastq2]]
     ch_fasta // [meta, fasta]
     ch_fasta_fai // [meta, fai]
+    ch_index // [meta, dir]
     dict // path(dict)
     known_sites_indels // [path(vcf), ...]
     known_sites_indels_tbi // [path(tbi), ...]
@@ -75,71 +73,27 @@ workflow PREPROCESS_GATK {
     //
     // Alignment — select aligner based on params.aligner
     //
-    if (params.aligner == 'bwa') {
-        if (params.bwaindex) {
-            ch_index = channel.value(
-                [["id": "bwa_index"], file("${params.bwaindex}/*{,.amb,.ann,.bwt,.pac,.sa}")]
-            )
-        }
-        else {
-            BWA_INDEX(ch_fasta)
-            ch_index = BWA_INDEX.out.index
-        }
-
-        BWA_MEM(
-            ch_trim_reads,
-            ch_index,
-        )
-
-        ch_aligned_bams = BWA_MEM.out.bam
-    }
-    else if (params.aligner == 'bwamem2') {
-        if (params.bwamem2index) {
-            ch_index = channel.value(
-                [["id": "bwamem2_index"], file("${params.bwamem2index}/*{,.amb,.ann,.bwt,.pac,.sa}")]
-            )
-        }
-        else {
-            BWAMEM2_INDEX(ch_fasta)
-            ch_index = BWAMEM2_INDEX.out.index
-        }
-
-        BWAMEM2_MEM(
-            ch_trim_reads,
-            ch_fasta,
-            ch_index,
-        )
-
-        ch_aligned_bams = BWAMEM2_MEM.out.bam
-    }
-    else if (params.aligner == 'minibwa') {
-        // TODO: Add parabricks alignment
-        error("minibwa aligner is not yet implemented.")
-    }
-    else if (params.aligner == 'parabricks') {
-        // TODO: Add parabricks alignment
-        error("Parabricks aligner is not yet implemented.")
-    }
-    else {
-        error("Unknown aligner: ${params.aligner}. Supported aligners are: bwa, bwamem2.")
-    }
+    PREPROCESS_ALIGN(
+        ch_trim_reads,
+        ch_fasta,
+        ch_fasta_fai,
+        ch_index,
+    )
 
     //
-    // Group split BAMs back by sample before deduplication
+    // Group split CRAMs back by sample before deduplication
     //
-    // TODO: Make cram default output from aligners via samtools and rename?
-    bam_grouped = ch_aligned_bams
-        .map { meta, bam ->
-            [groupKey(meta, meta.n_fastq), bam]
+    cram_grouped = PREPROCESS_ALIGN.out.crams
+        .map { meta, cram ->
+            [groupKey(meta, meta.n_fastq), cram]
         }
         .groupTuple()
 
     //
     // Mark Duplicates
     //
-    // TODO: Replace with faster samtools or sambamba? Can they take multi-file input?
     GATK4_MARKDUPLICATES(
-        bam_grouped,
+        cram_grouped,
         ch_fasta,
         ch_fasta_fai,
     )

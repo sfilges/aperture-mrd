@@ -3,7 +3,7 @@ process BWAMEM3_MEM {
     tag "${meta.id}"
     label 'process_high'
 
-    container 'community.wave.seqera.io/library/bwa-mem3_samtools_htslib:c28a809633c294ed'
+    container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:391ed2ac52c4a15a'
 
     input:
     tuple val(meta), path(reads)
@@ -11,7 +11,7 @@ process BWAMEM3_MEM {
     tuple val(meta3), path(fasta)
 
     output:
-    tuple val(meta), path("*.{bam,cram}"), emit: aligned
+    tuple val(meta), path("*.{bam,cram}"), emit: cram
     tuple val(meta), path("*.{bai,csi,crai}"), emit: index, optional: true
     tuple val("${task.process}"), val('bwamem3'), eval("bwa-mem3 version | sed -nE '1 s/^([0-9]+(\\.[0-9]+)+).*/\\1/p'"), emit: versions_bwamem3, topic: versions
     tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
@@ -32,6 +32,6 @@ process BWAMEM3_MEM {
         -t ${task.cpus} \\
         \$INDEX \\
         ${reads} \\
-        | samtools sort -@ ${task.cpus} ${fasta} -o ${prefix}.cram -
+        | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
 }

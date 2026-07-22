@@ -5,6 +5,9 @@
     Encapsulates the full read preprocessing chain:
       FastQC → fastp → alignment (BWA-MEM3/minibwa) → MarkDuplicates → indexing → QC
 
+    Uses faster aligners and skips base quality score recalibration in comparison to 
+    the 'standard' GATK workflow.
+
     Sample-type agnostic: tumor, normal, and plasma samples all pass through
     the same subworkflow. Branching by meta.status happens in main.nf.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -12,24 +15,20 @@
 
 include { FASTQC as FASTQC_RAW } from '../modules/fastqc/main'
 include { FASTP } from '../modules/fastp/main'
-include { BWA_INDEX } from '../modules/bwamem/index/main'
-include { BWA_MEM } from '../modules/bwamem/mem/main'
-include { BWAMEM2_INDEX } from '../modules/bwamem2/index/main'
-include { BWAMEM2_MEM } from '../modules/bwamem2/mem/main'
+include { PREPROCESS_ALIGN } from '../subworkflows/preprocess_align'
 include { SAMTOOLS_MERGE } from '../modules/samtools/merge/main'
-include { SAMTOOLS_MARDKDUP } from '../modules/samtools/markdup/main'
+include { SAMTOOLS_MARKDUP } from '../modules/samtools/markdup/main'
 include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
 include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
 include { RIKER_MULTI } from '../modules/fulcrum/riker/main'
+
 
 workflow PREPROCESS_FAST {
     take:
     ch_reads // [meta, [fastq1, fastq2]]
     ch_fasta // [meta, fasta]
     ch_fasta_fai // [meta, fai]
-    dict // path(dict)
-    known_sites_indels // [path(vcf), ...]
-    known_sites_indels_tbi // [path(tbi), ...]
+    ch_index
 
     main:
     ch_reports = channel.empty()
@@ -71,74 +70,37 @@ workflow PREPROCESS_FAST {
     }
 
     //
-    // Alignment — select aligner based on params.aligner
+    // Alignment — select aligner based on params.aligner + ext.when
     //
-    // TODO: run only fast aligners in fast mode
-    if (params.aligner == 'bwa') {
-        if (params.bwaindex) {
-            ch_index = channel.value(
-                [["id": "bwa_index"], file("${params.bwaindex}/*{,.amb,.ann,.bwt,.pac,.sa}")]
-            )
-        }
-        else {
-            BWA_INDEX(ch_fasta)
-            ch_index = BWA_INDEX.out.index
-        }
 
-        BWA_MEM(
-            ch_trim_reads,
-            ch_index,
-        )
-
-        ch_aligned_bams = BWA_MEM.out.bam
-    }
-    else if (params.aligner == 'bwamem2') {
-        if (params.bwamem2index) {
-            ch_index = channel.value(
-                [["id": "bwamem2_index"], file("${params.bwamem2index}/*{,.amb,.ann,.bwt,.pac,.sa}")]
-            )
-        }
-        else {
-            BWAMEM2_INDEX(ch_fasta)
-            ch_index = BWAMEM2_INDEX.out.index
-        }
-
-        BWAMEM2_MEM(
-            ch_trim_reads,
-            ch_fasta,
-            ch_index,
-        )
-
-        ch_aligned_bams = BWAMEM2_MEM.out.bam
-    }
-    else if (params.aligner == 'minibwa') {
-        // TODO: Add parabricks alignment
-        error("minibwa aligner is not yet implemented.")
-    }
-    else if (params.aligner == 'parabricks') {
-        // TODO: Add parabricks alignment
-        error("Parabricks aligner is not yet implemented.")
-    }
-    else {
-        error("Unknown aligner: ${params.aligner}. Supported aligners are: bwa, bwamem2.")
-    }
+    PREPROCESS_ALIGN(
+        ch_trim_reads,
+        ch_fasta,
+        ch_fasta_fai,
+        ch_index,
+    )
 
     //
-    // Group split BAMs back by sample before deduplication
+    // Group split CRAMs back by sample before deduplication
     //
-    bam_grouped = ch_aligned_bams
-        .map { meta, bam ->
-            [groupKey(meta, meta.n_fastq), bam]
+    cram_grouped = PREPROCESS_ALIGN.out.crams
+        .map { meta, cram ->
+            [groupKey(meta, meta.n_fastq), cram]
         }
         .groupTuple()
 
     //
     // Mark Duplicates
     //
-    // SAMTOOLS_MARDKDUP requires alignment files to be merged; GATK4_MARKDUPLICATES can take a list of files
-    SAMTOOLS_MERGE(bam_grouped)
+    // Fastmode uses samtools instead of gatk, but SAMTOOLS_MARKDUP requires alignment files to be merged;
+    // GATK4_MARKDUPLICATES can take a list of files
+    SAMTOOLS_MERGE(
+        cram_grouped,
+        ch_fasta,
+        ch_fasta_fai,
+    )
 
-    SAMTOOLS_MARDKDUP(
+    SAMTOOLS_MARKDUP(
         SAMTOOLS_MERGE.out.cram,
         ch_fasta,
         ch_fasta_fai,
@@ -153,11 +115,11 @@ workflow PREPROCESS_FAST {
     // Index recalibrated CRAM
     //
     INDEX_CRAM(
-        SAMTOOLS_MARDKDUP.out.cram
+        SAMTOOLS_MARKDUP.out.cram
     )
 
     // Join CRAM with index → [meta, cram, crai]
-    ch_cram = SAMTOOLS_MARDKDUP.out.cram
+    ch_cram = SAMTOOLS_MARKDUP.out.cram
         .join(
             INDEX_CRAM.out.crai,
             failOnDuplicate: true,
@@ -168,7 +130,11 @@ workflow PREPROCESS_FAST {
     //
     // Alignment QC — riker
     //
-    RIKER_MULTI(ch_cram, ch_fasta, ch_fasta_fai)
+    RIKER_MULTI(
+        ch_cram,
+        ch_fasta,
+        ch_fasta_fai,
+    )
     // TODO: Add reports to output channel
 
     emit:

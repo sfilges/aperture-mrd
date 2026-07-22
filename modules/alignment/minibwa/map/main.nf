@@ -12,7 +12,7 @@ process MINIBWA_MAP {
     tuple val(meta4), path(fai)
 
     output:
-    tuple val(meta), path("*.{bam,cram}"), emit: aligned
+    tuple val(meta), path("*.{bam,cram}"), emit: cram
     tuple val(meta), path("*.{bai,csi,crai}"), emit: index, optional: true
     tuple val("${task.process}"), val('minibwa'), eval('minibwa version | grep -o -E "[0-9]+(\\.[0-9]+)+"'), emit: versions_minibwa, topic: versions
     tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
