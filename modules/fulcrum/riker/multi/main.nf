@@ -1,7 +1,7 @@
 process RIKER_MULTI {
     // https://github.com/fulcrumgenomics/riker
     tag "$meta.id"
-    label 'process_low'
+    label 'process_medium'
 
     container 'quay.io/biocontainers/riker:0.4.1--hec9b1f2_0'
 
@@ -9,6 +9,7 @@ process RIKER_MULTI {
     tuple val(meta), path(input) // bam or cram
     tuple val(meta2), path(fasta) // Reference FASTA file (must be indexed with .fai). Required for CRAM and some tools.
     tuple val(meta3), path(fai)
+    tuple val(meta4), path(baits), path(targets)
 
     output:
     tuple val(meta), path("*.alignment-metrics.txt"),          emit: alignment_metrics,         optional: true
@@ -40,13 +41,42 @@ process RIKER_MULTI {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def ref = fasta ?: ''
+    def hybcap_opts = (baits && targets) ? "--hybcap::baits ${baits} --hybcap::targets ${targets}" : ''
     """
     riker multi \\
         -i ${input} \\
-        -r ${fasta} \\
+        -r ${ref} \\
         -o ${prefix} \\
         --threads ${task.cpus} \\
-        --tools alignment isize basic wgs gcbias alignment error \\
-        ${args}
+        ${args} \\
+        ${hybcap_opts}
+    """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.alignment-metrics.txt
+    touch ${prefix}.base-distribution-by-cycle.txt
+    touch ${prefix}.mean-quality-by-cycle.txt
+    touch ${prefix}.quality-score-distribution.txt
+    touch ${prefix}.error-mismatch.txt
+    touch ${prefix}.error-overlap.txt
+    touch ${prefix}.error-indel.txt
+    touch ${prefix}.gcbias-detail.txt
+    touch ${prefix}.gcbias-summary.txt
+    touch ${prefix}.hybcap-metrics.txt
+    touch ${prefix}.hybcap-per-target.txt
+    touch ${prefix}.hybcap-per-base.txt
+    touch ${prefix}.isize-metrics.txt
+    touch ${prefix}.isize-histogram.txt
+    touch ${prefix}.wgs-metrics.txt
+    touch ${prefix}.wgs-coverage.txt
+    touch ${prefix}.base-distribution-by-cycle.pdf
+    touch ${prefix}.gcbias-chart.pdf
+    touch ${prefix}.isize-histogram.pdf
+    touch ${prefix}.mean-quality-by-cycle.pdf
+    touch ${prefix}.quality-score-distribution.pdf
+    touch ${prefix}.wgs-coverage.pdf
     """
 }

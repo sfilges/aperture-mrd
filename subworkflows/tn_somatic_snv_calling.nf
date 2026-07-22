@@ -1,5 +1,5 @@
 // Mutect2 and post-processing modules
-include { GATK4_MUTECT2 as MUTECT2_SOMATIC } from '../modules/gatk4/mutect2/main'
+include { GATK4_MUTECT2 as MUTECT2_SOMATIC } from '../modules/variant_callers/mutect2/main'
 include { GATK4_MERGEVCFS as MERGE_MUTECT2 } from '../modules/gatk4/mergevcfs/main'
 include { GATK4_MERGEMUTECTSTATS as MERGEMUTECTSTATS } from '../modules/gatk4/mergemutectstats/main'
 include { GATK4_LEARNREADORIENTATIONMODEL as LEARNREADORIENTATIONMODEL } from '../modules/gatk4/learnreadorientationmodel/main'

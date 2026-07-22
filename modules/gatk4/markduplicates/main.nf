@@ -4,9 +4,6 @@ process GATK4_MARKDUPLICATES {
 
     container 'biocontainers/mulled-v2-d9e7bad0f7fbc8f4458d5c3ab7ffaaf0235b59fb:7cc3d06cbf42e28c5e2ebfc7c858654c7340a9d5-0'
 
-    publishDir "${params.outdir}/${workflow.runName}/preprocessing/markduplicates/${meta.id}/", mode: params.publish_dir_mode, pattern: "*.{cram,crai}"
-    publishDir "${params.outdir}/${workflow.runName}/reports/", mode: params.publish_dir_mode, pattern: "*.metrics"
-
     input:
     tuple val(meta), path(bam)
     tuple val(meta2), path(fasta)

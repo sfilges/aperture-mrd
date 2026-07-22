@@ -4,8 +4,6 @@ process SAMTOOLS_STATS {
 
     container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
-    publishDir "${params.outdir}/${workflow.runName}/reports/samtools/${meta.id}", mode: params.publish_dir_mode
-
     input:
     tuple val(meta), path(input), path(input_index)
     tuple val(meta2), path(fasta)

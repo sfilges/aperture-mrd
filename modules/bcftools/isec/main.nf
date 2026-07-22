@@ -4,8 +4,6 @@ process BCFTOOLS_ISEC {
 
     container 'biocontainers/bcftools:1.21--h8b25389_1'
 
-    publishDir "${params.outdir}/${workflow.runName}/variant_calling/intersection/${meta.id}", mode: params.publish_dir_mode
-
     input:
     tuple val(meta), path(vcfs), path(tbis)
     val consensus_min_count

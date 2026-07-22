@@ -27,8 +27,7 @@ include { samplesheetToList } from 'plugin/nf-schema'
 include { validateParameters } from 'plugin/nf-schema'
 include { PREPARE_GENOME } from './subworkflows/prepare_genome'
 include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
-include { PREPROCESS_FAST } from './subworkflows/preprocess_fast'
-include { PREPROCESS_GATK } from './subworkflows/preprocess_gatk'
+include { PREPROCESS_READS } from './subworkflows/preprocess_reads'
 include { TN_SOMATIC_SNV_CALLING } from './subworkflows/tn_somatic_snv_calling'
 include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
 include { VCF_FILTER } from './subworkflows/vcf_filter'
@@ -84,6 +83,12 @@ workflow {
         params.minibwa_index,
     )
 
+
+    // Create WES file channels
+    mode = params.mode
+    wes_baits = params.wes_baits ? channel.fromPath(params.wes_baits, checkIfExists: true).collect() : channel.value([])
+    wes_targets = params.wes_targets ? channel.fromPath(params.wes_targets, checkIfExists: true).collect() : channel.value([])
+
     // Create known sites channels (collect once, reuse multiple times)
     known_indels = params.known_indels ? channel.fromPath(params.known_indels).collect() : channel.value([])
     known_indels_tbi = params.known_indels_tbi ? channel.fromPath(params.known_indels_tbi).collect() : channel.value([])
@@ -102,49 +107,38 @@ workflow {
         [],
     )
 
-    // Combine known sites and dict — needed by PREPROCESS_GATK and variant calling
+    // Combine known sites and dict — needed by PREPROCESS_READS (gatk mode) and variant calling
     known_sites_indels = dbsnp.concat(known_indels).collect()
     known_sites_indels_tbi = dbsnp_tbi.concat(known_indels_tbi).collect()
     dict = channel.fromPath(params.dict, checkIfExists: true).collect()
 
     //
-    // Preprocessing: fast of gatk
+    // Preprocessing: fast or gatk
     //
-    if (params.preprocessing == "fast"){
-
-        if (params.aligner in ['bwamem', 'bwamem2']) {
-            log.warn "preprocessing='fast' with aligner='${params.aligner}': fast mode is tuned for bwamem3/minibwa; '${params.aligner}' will run but may be suboptimal."
-        }
-
-        // FastQC → fastp → alignment → MarkDuplicates → QC
-        PREPROCESS_FAST(
-            ch_samplesheet,
-            PREPARE_GENOME.out.fasta,
-            PREPARE_GENOME.out.fai,
-            PREPARE_GENOME.out.index,
-        )
-
-        ch_cram_for_variant_calling = PREPROCESS_FAST.out.cram
-        ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_FAST.out.reports)
-
-    } else if (params.preprocessing == "gatk") {
-
-        // FastQC → fastp → alignment → MarkDuplicates → BQSR → QC
-        PREPROCESS_GATK(
-            ch_samplesheet,
-            PREPARE_GENOME.out.fasta,
-            PREPARE_GENOME.out.fai,
-            PREPARE_GENOME.out.index,
-            dict,
-            known_sites_indels,
-            known_sites_indels_tbi,
-        )
-
-        ch_cram_for_variant_calling = PREPROCESS_GATK.out.cram
-        ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_GATK.out.reports)
-    } else {
+    if (!(params.preprocessing in ['fast', 'gatk'])) {
         error("Unknown preprocessing mode: ${params.preprocessing}")
     }
+
+    if (params.preprocessing == "fast" && params.aligner in ['bwamem', 'bwamem2']) {
+        log.warn "preprocessing='fast' with aligner='${params.aligner}': fast mode is tuned for bwamem3/minibwa; '${params.aligner}' will run but may be suboptimal."
+    }
+
+    // FastQC → fastp → alignment → MarkDuplicates → [BQSR] → indexing → QC
+    PREPROCESS_READS(
+        ch_samplesheet,
+        PREPARE_GENOME.out.fasta,
+        PREPARE_GENOME.out.fai,
+        PREPARE_GENOME.out.index,
+        mode,
+        wes_baits,
+        wes_targets,
+        dict,
+        known_sites_indels,
+        known_sites_indels_tbi,
+    )
+
+    ch_cram_for_variant_calling = PREPROCESS_READS.out.cram
+    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_READS.out.reports)
 
     //
     // Logic to combine tumor-normal pairs. Does *not* work for tumor only or germline only samples!

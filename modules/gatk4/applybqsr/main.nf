@@ -5,8 +5,6 @@ process GATK4_APPLYBQSR {
     // TODO Use a container with gatk and samtools installed, to index the output CRAM file directly
     container 'biocontainers/gatk4:4.5.0.0--py36hdfd78af_0' // Consider quay.io/nf-core/gatk:4.6.1.10
 
-    publishDir "${params.outdir}/${workflow.runName}/preprocessing/recal/${meta.id}/", mode: params.publish_dir_mode, pattern: "*.{cram,crai}"
-
     input:
     tuple val(meta), path(cram), path(bqsr_table)
     tuple val(meta2), path(fasta)

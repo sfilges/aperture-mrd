@@ -1,9 +1,7 @@
 process MULTIQC {
     label 'process_single'
 
-    container 'biocontainers/multiqc:1.25.2--pyhdfd78af_0'
-
-    publishDir "${params.outdir}/${workflow.runName}/reports/multiqc", mode: params.publish_dir_mode
+    container 'biocontainers/multiqc:1.35--pyhdfd78af_1'
 
     input:
     path(multiqc_files, stageAs: "?/*")

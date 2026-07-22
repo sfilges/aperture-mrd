@@ -4,8 +4,6 @@ process LOFREQ_SOMATIC {
 
     container 'biocontainers/lofreq:2.1.5--py38h588ecb2_4'
 
-    publishDir "${params.outdir}/${workflow.runName}/variant_calling/lofreq/{meta.id}", mode: params.publish_dir_mode, pattern: "*{vcf.gz,vcf.gz.tbi,log}"
-
     input:
     tuple val(meta), path(normal), path(normal_index), path(tumor), path(tumor_index)
     tuple val(meta2), path(fasta)

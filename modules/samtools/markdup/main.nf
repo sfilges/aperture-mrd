@@ -4,9 +4,6 @@ process SAMTOOLS_MARKDUP {
 
     container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
-    publishDir "${params.outdir}/${workflow.runName}/preprocessing/markduplicates/${meta.id}/", mode: params.publish_dir_mode, pattern: "*.{cram,crai}"
-    publishDir "${params.outdir}/${workflow.runName}/reports/", mode: params.publish_dir_mode, pattern: "*.metrics"
-
     input:
     tuple val(meta), path(bam)
     tuple val(meta2), path(fasta)

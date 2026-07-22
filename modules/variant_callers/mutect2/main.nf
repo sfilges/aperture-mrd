@@ -3,8 +3,6 @@ process GATK4_MUTECT2 {
     label 'process_medium'
 
     container 'biocontainers/gatk4:4.6.2.0--py310hdfd78af_0'
-    
-    publishDir "${params.outdir}/${workflow.runName}/variant_calling/", mode: params.publish_dir_mode, pattern: "*{vcf.gz,vcf.gz.tbi,stats}", saveAs: { meta.num_intervals > 1 ? null : "mutect2/${meta.id}/${it}" }
 
     // Input format:
     //[meta, normal_cram, normal_crai, tumor_cram, tumor_crai]
