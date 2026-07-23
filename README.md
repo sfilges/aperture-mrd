@@ -155,6 +155,44 @@ Runtime profile:
                 BSW time, avg: 577.40, (577.73, 576.24)
 
 
+### Duplicate marking
+
+samtools collate -O -u --threads 6 SRR7890943_WGS_cross-site_study.cram | \
+samtools fixmate -m -u --threads 6 - - | \
+samtools sort -u --threads 6 - | \
+samtools markdup -f SRR7890943_WGS.md.metrics --threads 6 --reference /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta --output-fmt cram - SRR7890943_WGS_cross-site_study.sorted.md.cram
+
+
 ## Performance using custom profile
 
-bwa-mem3 mem -t 16 -K 100000000 -m 10 -y 0 --bam=0 --min-ext-len 30 --skip-contained-ext /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem3Index/Homo_sapiens_assembly38.fasta /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz | samtools sort -@ 16 --reference /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta -o SRR7890943_WGS_cross-site_study.cram -
+bwa-mem3 mem -t 30 -K 100000000 -m 10 -y 0 --bam=0 --min-ext-len 30 --skip-contained-ext /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem3Index/Homo_sapiens_assembly38.fasta /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz | samtools sort -@ 8 --reference /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta -o SRR7890943_WGS_cross-site_study.cram -
+
+
+No. of OMP threads: 30
+Processor is running @2400.628296 MHz
+Runtime profile:
+
+        Time taken for main_mem function: 4534.06 sec
+
+        IO times (sec) :
+        Reading IO time (reads) avg: 885.09, (885.09, 885.09)
+        Writing IO time (SAM) avg: 2090.31, (2090.31, 2090.31)
+        Reading IO time (Reference Genome) avg: 0.00, (0.00, 0.00)
+        Index read time avg: 12.29, (12.29, 12.29)
+
+        Overall time (sec) (Excluding Index reading time):
+        PROCESS() (Total compute time + (read + SAM) IO time) : 4521.73
+        MEM_PROCESS_SEQ() (Total compute time (Kernel + SAM)), avg: 3444.41, (3444.41, 3444.41)
+
+         SAM Processing time (sec):
+        --WORKER_SAM avg: 804.79, (804.79, 804.79)
+
+        Kernels' compute time (sec):
+        Total kernel (smem+sal+bsw) time avg: 2565.64, (2565.64, 2565.64)
+                SMEM compute avg: 719.75, (735.36, 714.29)
+                MEM_CHAIN avg: 547.07, (551.55, 537.14)
+                SAL compute avg: 545.05, (549.37, 535.05)
+                                MEM_SA avg: 311.40, (313.22, 306.07)
+
+                BSW time, avg: 964.81, (965.68, 961.84)
+
