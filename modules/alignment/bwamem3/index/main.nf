@@ -4,7 +4,7 @@ process BWAMEM3_INDEX {
 
     // No process_high label: its withLabel memory (72.GB) would win over this in-script
     // directive. cpus/time are set via withName in conf/modules.config instead.
-    // 64-bit SA over fwd+rev of hg38 peaks ~70 GiB; scale memory with genome size.
+    // 64-bit SA over fwd+rev of hg38 peaks ~72 GiB; scale memory with genome size.
     memory { 280.MB * Math.ceil(fasta.size() / 10000000) * task.attempt }
 
     container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:391ed2ac52c4a15a'
@@ -22,8 +22,8 @@ process BWAMEM3_INDEX {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // ~85% of the allocation: bwa-mem3's default cap (32 GiB) aborts the build otherwise
-    def max_mem = Math.max(1, Math.round(task.memory.toGiga() * 0.85))
+    // ~95% of the allocation: bwa-mem3's default cap (32 GiB) aborts the build otherwise
+    def max_mem = Math.max(1, Math.round(task.memory.toGiga() * 0.95))
     """
     mkdir bwamem3
 

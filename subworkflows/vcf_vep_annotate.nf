@@ -7,14 +7,15 @@
 */
 
 include { ENSEMBLVEP_VEP } from '../modules/annotation/ensemblvep/vep/main'
+include { FASTVEP_ANNOTATE } from '../modules/annotation/fastvep/annotate/main' 
 
 workflow VCF_VEP_ANNOTATE {
     take:
-        vcf           // tuple val(meta), path(vcf)
-        genome        // params.vep_genome
-        species       // params.vep_species
-        cache_version // params.vep_cache_version
-        cache         // params.vep_cache
+        vcf_for_vep           // tuple val(meta), path(vcf)
+        vep_genome        // params.vep_genome
+        vep_species       // params.vep_species
+        vep_cache_version // params.vep_cache_version
+        vep_cache         // params.vep_cache
         fasta         // tuple val(meta2), path(fasta)
 
     main:
@@ -25,13 +26,18 @@ workflow VCF_VEP_ANNOTATE {
     //
     // Run Ensembl VEP or rust-based fastpvep optionally
     //
+
+    // Method is controlled by modules.config via ext.when, only one method is used
     ENSEMBLVEP_VEP(
-        vcf,
-        genome,
-        species,
-        cache_version,
-        cache,
+        vcf_for_vep,
+        vep_genome,
+        vep_species,
+        vep_cache_version,
+        vep_cache,
         fasta,
     )
+
+    // FASTVEP is not implemented yet
+    // FASTVEP_ANNOTATE()
 
 }

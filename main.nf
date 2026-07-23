@@ -23,8 +23,8 @@ nextflow.enable.dsl = 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { samplesheetToList } from 'plugin/nf-schema'
 include { validateParameters } from 'plugin/nf-schema'
+include { samplesheetToList } from 'plugin/nf-schema'
 include { PREPARE_GENOME } from './subworkflows/prepare_genome'
 include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
 include { PREPROCESS_READS } from './subworkflows/preprocess_reads'
@@ -43,8 +43,9 @@ include { MULTIQC } from './modules/multiqc/main'
 workflow {
 
     if (params.validate_params) {
-        // Validate parameters relative to the parameter JSON schema 
-        // in default location: "nextflow_schema.json"
+        // Validate parameters relative to the parameter JSON schema in default location: "nextflow_schema.json"
+        // As of 2026-07-23 no automatic builder for samplesheet schema exist, you must build your own from the example.
+        // See samplesheet schema example: https://nextflow-io.github.io/nf-schema/latest/nextflow_schema/sample_sheet_schema_examples/
         validateParameters()
     }
 
@@ -100,7 +101,6 @@ workflow {
     germline_resource_tbi = params.germline_resource_tbi ? channel.fromPath("${params.germline_resource_tbi}").collect() : channel.value([])
 
     // TODO Intervals file is split up into multiple bed files for scatter/gather & grouping together small intervals
-
     PREPARE_INTERVALS(
         PREPARE_GENOME.out.fai,
         params.intervals,

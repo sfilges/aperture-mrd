@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/aperture-mrd//nextflow_schema.json",
+  "title": "aperture-mrd pipeline parameters",
+  "description": "WGS - Workflow for ctDNA detection from whole genome sequencing data",
+  "type": "object",
+  "$defs": {
+    "input_output_options": {
+      "title": "Input/output options",
+      "type": "object",
+      "fa_icon": "fas fa-terminal",
+      "description": "Define where the pipeline should find input data and save output data.",
+      "required": ["input", "outdir"],
+      "properties": {
+        "input": {
+          "type": "string",
+          "format": "file-path",
+          "exists": true,
+          "schema": "assets/schema_input.json",
+          "mimetype": "text/csv",
+          "pattern": "^\\S+\\.csv$",
+          "description": "Path to comma-separated file containing information about the samples in the experiment.",
+          "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row.",
+          "fa_icon": "fas fa-file-csv"
+        },
+        "outdir": {
+          "type": "string",
+          "format": "directory-path",
+          "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+          "fa_icon": "fas fa-folder-open"
+        }
+      }
+    },
+    "generic_options": {
+      "title": "Generic options",
+      "type": "object",
+      "fa_icon": "fas fa-file-import",
+      "description": "Less common options for the pipeline, typically set in a config file.",
+      "help_text": "These options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.\n\nTypically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.",
+      "properties": {
+        "validate_params": {
+          "type": "boolean",
+          "description": "Boolean whether to validate parameters against the schema at runtime",
+          "default": true,
+          "fa_icon": "fas fa-check-square",
+          "hidden": true
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/input_output_options"
+    },
+    {
+      "$ref": "#/$defs/generic_options"
+    }
+  ],
+  "properties": {
+    "publish_dir_mode": {
+      "type": "string",
+      "default": "copy"
+    },
+    "step": {
+      "type": "string",
+      "default": "fastq2bam"
+    },
+    "aligner": {
+      "type": "string",
+      "default": "bwamem3"
+    },
+    "bwamem3_fast": {
+      "type": "boolean"
+    },
+    "mode": {
+      "type": "string",
+      "default": "wgs"
+    },
+    "preprocessing": {
+      "type": "string",
+      "default": "fast"
+    },
+    "merge_fastqs": {
+      "type": "boolean"
+    },
+    "save_fastqs": {
+      "type": "boolean"
+    },
+    "split_fastq": {
+      "type": "integer",
+      "default": 50000000
+    },
+    "trim_nextseq": {
+      "type": "boolean"
+    },
+    "length_required": {
+      "type": "integer",
+      "default": 50
+    },
+    "save_mapped": {
+      "type": "boolean",
+      "default": true
+    },
+    "max_r1_length": {
+      "type": "integer",
+      "default": 0
+    },
+    "max_r2_length": {
+      "type": "integer",
+      "default": 0
+    },
+    "n_interval_splits": {
+      "type": "integer",
+      "default": 10
+    },
+    "bases_per_chunk": {
+      "type": "integer",
+      "default": 1000000
+    },
+    "seq_center": {
+      "type": "string"
+    },
+    "seq_platform": {
+      "type": "string",
+      "default": "ILLUMINA"
+    },
+    "wes_targets": {
+      "type": "string"
+    },
+    "wes_baits": {
+      "type": "string"
+    },
+    "genome": {
+      "type": "string",
+      "default": "GATK.GRCh38"
+    },
+    "igenomes_base": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes"
+    },
+    "igenomes_ignore": {
+      "type": "boolean"
+    },
+    "bwa_index": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Sequence/BWAIndex/"
+    },
+    "bwamem2_index": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem2Index/"
+    },
+    "bwamem3_index": {
+      "type": "string"
+    },
+    "minibwa_index": {
+      "type": "string"
+    },
+    "fasta": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta"
+    },
+    "fai": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta.fai"
+    },
+    "dict": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.dict"
+    },
+    "known_indels": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/{Mills_and_1000G_gold_standard.indels.hg38,beta/Homo_sapiens_assembly38.known_indels}.vcf.gz"
+    },
+    "known_indels_tbi": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/{Mills_and_1000G_gold_standard.indels.hg38,beta/Homo_sapiens_assembly38.known_indels}.vcf.gz.tbi"
+    },
+    "known_snps": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000G_omni2.5.hg38.vcf.gz"
+    },
+    "known_snps_tbi": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000G_omni2.5.hg38.vcf.gz.tbi"
+    },
+    "dbsnp": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/dbsnp_146.hg38.vcf.gz"
+    },
+    "dbsnp_tbi": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/dbsnp_146.hg38.vcf.gz.tbi"
+    },
+    "germline_resource": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/af-only-gnomad.hg38.vcf.gz"
+    },
+    "germline_resource_tbi": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/af-only-gnomad.hg38.vcf.gz.tbi"
+    },
+    "intervals": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/intervals/wgs_calling_regions_noseconds.hg38.bed"
+    },
+    "encode_blacklist": {
+      "type": "string",
+      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/encode_blacklist_hg38_v2.bed"
+    },
+    "centromeres": {
+      "type": "string",
+      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/centromeres.sorted.bed"
+    },
+    "simple_repeats": {
+      "type": "string",
+      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/simple_repeat_regions.sorted2.bed"
+    },
+    "vep_cache": {
+      "type": "string"
+    },
+    "vep_cache_version": {
+      "type": "integer",
+      "default": 116
+    },
+    "vep_genome": {
+      "type": "string",
+      "default": "GRCh38"
+    },
+    "vep_species": {
+      "type": "string",
+      "default": "homo_sapiens"
+    }
+  }
+}
