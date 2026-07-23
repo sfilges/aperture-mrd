@@ -119,3 +119,42 @@ This pipeline uses code and infrastructure developed and maintained by the [nf-c
 >
 > Nat Biotechnol. 2020 Feb 13. doi: 10.1038/s41587-020-0439-x.
 > In addition, references of tools and data used in this pipeline are as follows:
+
+
+
+## Performance using `--fast`
+
+bwa-mem3 mem -t 16 -K 100000000 --fast /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem3Index/Homo_sapiens_assembly38.fasta /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz | samtools sort -@ 16 --reference /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta -o SRR7890943_WGS_cross-site_study.cram -
+
+No. of OMP threads: 16
+Processor is running @2400.368208 MHz
+Runtime profile:
+
+        Time taken for main_mem function: 5081.57 sec
+
+        IO times (sec) :
+        Reading IO time (reads) avg: 846.12, (846.12, 846.12)
+        Writing IO time (SAM) avg: 1751.95, (1751.95, 1751.95)
+        Reading IO time (Reference Genome) avg: 0.00, (0.00, 0.00)
+        Index read time avg: 13.59, (13.59, 13.59)
+
+        Overall time (sec) (Excluding Index reading time):
+        PROCESS() (Total compute time + (read + SAM) IO time) : 5067.94
+        MEM_PROCESS_SEQ() (Total compute time (Kernel + SAM)), avg: 4088.36, (4088.36, 4088.36)
+
+         SAM Processing time (sec):
+        --WORKER_SAM avg: 819.64, (819.64, 819.64)
+
+        Kernels' compute time (sec):
+        Total kernel (smem+sal+bsw) time avg: 3199.79, (3199.79, 3199.79)
+                SMEM compute avg: 1111.20, (1116.45, 1105.48)
+                MEM_CHAIN avg: 808.75, (813.07, 804.11)
+                SAL compute avg: 806.20, (810.50, 801.64)
+                                MEM_SA avg: 453.07, (456.27, 449.36)
+
+                BSW time, avg: 577.40, (577.73, 576.24)
+
+
+## Performance using custom profile
+
+bwa-mem3 mem -t 16 -K 100000000 -m 10 -y 0 --bam=0 --min-ext-len 30 --skip-contained-ext /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem3Index/Homo_sapiens_assembly38.fasta /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz /home/ubuntu/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz | samtools sort -@ 16 --reference /mnt/sarek_scratch/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta -o SRR7890943_WGS_cross-site_study.cram -

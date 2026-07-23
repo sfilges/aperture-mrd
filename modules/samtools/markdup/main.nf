@@ -5,7 +5,7 @@ process SAMTOOLS_MARKDUP {
     container 'biocontainers/samtools:1.21--h50ea8bc_0'
 
     input:
-    tuple val(meta), path(bam)
+    tuple val(meta), path(cram)
     tuple val(meta2), path(fasta)
     tuple val(meta3), path(fai)
 
@@ -22,7 +22,7 @@ process SAMTOOLS_MARKDUP {
     def args   = task.ext.args   ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    samtools collate -O -u --threads ${task.cpus} ${bam} | \\
+    samtools collate -O -u --threads ${task.cpus} ${cram} | \\
         samtools fixmate -m -u --threads ${task.cpus} - - | \\
         samtools sort -u --threads ${task.cpus} - | \\
         samtools markdup \\

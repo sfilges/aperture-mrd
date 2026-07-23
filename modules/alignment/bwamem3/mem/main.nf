@@ -32,6 +32,6 @@ process BWAMEM3_MEM {
         -t ${task.cpus} \\
         \$INDEX \\
         ${reads} \\
-        | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
+        | samtools sort -@ ${task.cpus} --reference ${fasta} -O cram -o ${prefix}.cram -
     """
 }
