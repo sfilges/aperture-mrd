@@ -1,5 +1,6 @@
 process RIKER_MULTI {
     // https://github.com/fulcrumgenomics/riker
+    // As a rough guide returns flatten past ~6 threads for BAM and ~8 for CRAM
     tag "$meta.id"
     label 'process_medium'
 
