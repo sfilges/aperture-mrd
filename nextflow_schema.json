@@ -219,8 +219,8 @@
       "type": "string"
     },
     "vep_cache_version": {
-      "type": "integer",
-      "default": 116
+      "type": "string",
+      "default": "116"
     },
     "vep_genome": {
       "type": "string",
@@ -229,6 +229,18 @@
     "vep_species": {
       "type": "string",
       "default": "homo_sapiens"
+    },
+    "msisensor2_models": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/MSIsensor2/models_hg38/"
+    },
+    "vep_out_format": {
+      "type": "string",
+      "default": "vcf"
+    },
+    "vep_mode": {
+      "type": "string",
+      "default": "ensembl"
     }
   }
 }
