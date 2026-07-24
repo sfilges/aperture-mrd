@@ -21,7 +21,11 @@ process BWAMEM3_MEM {
 
     script:
     def args = task.ext.args ?: ''
+    def args2 = task.ext.args2 ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // Divide threads to not exceed task.cpus
+    def sort_cpus  = Math.max(1, Math.min(6, (task.cpus / 4) as int))
+    def align_cpus = Math.max(1, task.cpus - sort_cpus)
     """
     INDEX=`find -L ./ -name "*.amb" | sed 's/\\.amb\$//'`
 
@@ -29,9 +33,9 @@ process BWAMEM3_MEM {
         mem \\
         -R "${meta.read_group}" \\
         ${args} \\
-        -t ${task.cpus} \\
+        -t ${align_cpus} \\
         \$INDEX \\
         ${reads} \\
-        | samtools sort -@ ${task.cpus} --reference ${fasta} -O cram -o ${prefix}.cram -
+        | samtools sort -@ ${sort_cpus} ${args2} --reference ${fasta} -O cram -o ${prefix}.cram -
     """
 }

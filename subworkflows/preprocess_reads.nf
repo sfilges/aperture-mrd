@@ -129,23 +129,19 @@ workflow PREPROCESS_READS {
     else {
         // Fast mode uses samtools instead of gatk, and SAMTOOLS_MARKDUP takes a single
         // input file (GATK4_MARKDUPLICATES can take a list directly). Merge is only needed
-        // when a sample was split into multiple chunks; single-chunk samples (e.g. when
-        // split_fastq is off) skip the no-op merge and go straight to markdup. Skips BQSR.
-        cram_grouped
-            .branch { _meta, crams ->
-                single: crams.size() == 1
-                multi: true
-            }
-            .set { ch_cram_to_merge }
-
-        SAMTOOLS_MERGE(
-            ch_cram_to_merge.multi,
-            ch_fasta,
-            ch_fasta_fai,
-        )
-
-        ch_cram_to_markdup = SAMTOOLS_MERGE.out.cram
-            .mix(ch_cram_to_merge.single.map { meta, crams -> [meta, crams[0]] })
+        // when split_fastq shards a sample into multiple chunks; without splitting each
+        // group holds a single CRAM, so we unwrap it and skip the no-op merge. Skips BQSR.
+        if (params.split_fastq) {
+            SAMTOOLS_MERGE(
+                cram_grouped,
+                ch_fasta,
+                ch_fasta_fai,
+            )
+            ch_cram_to_markdup = SAMTOOLS_MERGE.out.cram
+        }
+        else {
+            ch_cram_to_markdup = cram_grouped.map { meta, crams -> [meta, crams[0]] }
+        }
 
         SAMTOOLS_MARKDUP(
             ch_cram_to_markdup,
