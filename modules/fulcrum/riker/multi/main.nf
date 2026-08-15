@@ -7,7 +7,7 @@ process RIKER_MULTI {
     container 'quay.io/biocontainers/riker:0.4.1--hec9b1f2_0'
 
     input:
-    tuple val(meta), path(input) // bam or cram
+    tuple val(meta), path(input), path(index) // bam or cram, with its index
     tuple val(meta2), path(fasta) // Reference FASTA file (must be indexed with .fai). Required for CRAM and some tools.
     tuple val(meta3), path(fai)
     tuple val(meta4), path(baits), path(targets)

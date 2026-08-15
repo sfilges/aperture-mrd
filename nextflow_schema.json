@@ -88,7 +88,7 @@
     },
     "split_fastq": {
       "type": "integer",
-      "default": 50000000
+      "default": 0
     },
     "trim_nextseq": {
       "type": "boolean"
@@ -125,10 +125,12 @@
       "default": "ILLUMINA"
     },
     "wes_targets": {
-      "type": "string"
+      "type": "string",
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/panels/idt_xgen_v2/xgen-exome-hyb-panel-v2-targets-hg38.bed"
     },
     "wes_baits": {
-      "type": "string"
+      "type": "string",
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/panels/idt_xgen_v2/xgen-exome-hyb-panel-v2-probes-hg38.bed"
     },
     "genome": {
       "type": "string",
@@ -199,21 +201,17 @@
       "type": "string",
       "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/af-only-gnomad.hg38.vcf.gz.tbi"
     },
-    "intervals": {
-      "type": "string",
-      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/intervals/wgs_calling_regions_noseconds.hg38.bed"
-    },
     "encode_blacklist": {
       "type": "string",
-      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/encode_blacklist_hg38_v2.bed"
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/encode_blacklist_hg38_v2.bed"
     },
     "centromeres": {
       "type": "string",
-      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/centromeres.sorted.bed"
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/centromeres.sorted.bed"
     },
     "simple_repeats": {
       "type": "string",
-      "default": "/Users/ctosimsen/Documents/GitHub/aperture-mrd/assets/simple_repeat_regions.sorted2.bed"
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/simple_repeat_regions.sorted2.bed"
     },
     "vep_cache": {
       "type": "string"
@@ -241,6 +239,65 @@
     "vep_mode": {
       "type": "string",
       "default": "ensembl"
+    },
+    "interval_padding": {
+      "type": "integer",
+      "default": 0
+    },
+    "cnv_caller": {
+      "type": "string"
+    },
+    "cnvkit_reference": {
+      "type": "string"
+    },
+    "cnvkit_access": {
+      "type": "string"
+    },
+    "cnvkit_exclude": {
+      "type": "string",
+      "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/{encode_blacklist_hg38_v2,centromeres.sorted}.bed"
+    },
+    "cnvkit_target_avg_size": {
+      "type": "string"
+    },
+    "purecn": {
+      "type": "boolean"
+    },
+    "purecn_genome": {
+      "type": "string",
+      "default": "hg38"
+    },
+    "purecn_normaldb": {
+      "type": "string"
+    },
+    "purecn_mapping_bias": {
+      "type": "string"
+    },
+    "cnv_reference_name": {
+      "type": "string",
+      "default": "panel"
+    },
+    "purecn_normal_panel": {
+      "type": "string"
+    },
+    "pon": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000g_pon.hg38.vcf.gz"
+    },
+    "pon_tbi": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/GATKBundle/1000g_pon.hg38.vcf.gz.tbi"
+    },
+    "wes_use_baits_as_intervals": {
+      "type": "boolean"
+    },
+    "wgs_intervals": {
+      "type": "string",
+      "default": "s3://ngi-igenomes/igenomes/Homo_sapiens/GATK/GRCh38/Annotation/intervals/wgs_calling_regions_noseconds.hg38.bed"
+    },
+    "run_id": {
+      "type": "string",
+      "default": "2026-08-01_19-52-17"
     }
   }
 }

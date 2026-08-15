@@ -6,8 +6,9 @@ process FULCRUM_FGUMI_EXTRACT{
     container 'quay.io/biocontainers/fgumi:0.4.0--h54198d6_0'
 
     input:
-    tuple val(meta), path(bam)
+    tuple val(meta), path(reads)
     path(fasta) // Reference FASTA file (must be indexed with .fai). Required. Required when error is selected
+    val(library)
 
     output:
     tuple val(meta), path("*.bai") , optional:true, emit: bai
@@ -35,5 +36,4 @@ process FULCRUM_FGUMI_EXTRACT{
     """
     touch ${prefix}.bam
     """
-
 }

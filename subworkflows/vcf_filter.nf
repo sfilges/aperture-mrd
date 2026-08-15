@@ -36,7 +36,7 @@ workflow VCF_FILTER {
     // ──────────────────────────────────────────────────────────────────────
 
     // Concatenate all blacklist BEDs into one, then sort and merge
-    ch_beds = channel.value([["id": "blacklist"], blacklists])
+    ch_beds = blacklists.map { beds -> [["id": "blacklist"], beds] }
 
     BEDTOOLS_CONCAT(ch_beds)
 
@@ -67,7 +67,9 @@ workflow VCF_FILTER {
             [meta, [vcf, gvcf], [tbi, gtbi]]
         }
 
-    GNOMAD_ISEC(ch_gnomad_isec_input, "--complement")
+    // -C (set via ext.args) keeps only records private to the first file,
+    // i.e. drops every compendium variant that matches a gnomAD record
+    GNOMAD_ISEC(ch_gnomad_isec_input, [])
 
     emit:
     vcf = GNOMAD_ISEC.out.vcf // [meta, compendium.filtered.vcf.gz]

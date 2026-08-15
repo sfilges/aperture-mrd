@@ -1,3 +1,3 @@
 sample_id,sample,status,fastq_1,fastq_2
-test_001_WGS_R1.fastq.gz,P001,0,/home/stefan/Documents/wgs_test_data/WGS_IL_N_2_R1_0_1x.fastq.gz,/home/stefan/Documents/wgs_test_data/WGS_IL_N_2_R2_0_1x.fastq.gz
-test_001_WGS_R1.fastq.gz,P001,1,/home/stefan/Documents/wgs_test_data/WGS_IL_T_3_R1_0_1x.fastq.gz,/home/stefan/Documents/wgs_test_data/WGS_IL_T_3_R2_0_1x.fastq.gz
+WGS_NS_N_1,WGS_NS_1,0,/home/stefan/references/test_data/SRR7890943_WGS_1M_1.fastq.gz,/home/stefan/references/test_data/SRR7890943_WGS_1M_2.fastq.gz
+WGS_NS_T_1,WGS_NS_1,1,/home/stefan/references/test_data/SRR7890893_WGS_1M_1.fastq.gz,/home/stefan/references/test_data/SRR7890893_WGS_1M_2.fastq.gz

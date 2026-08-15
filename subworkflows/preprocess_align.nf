@@ -2,13 +2,13 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ALIGNMENT Subworkflow
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Runs only one aligner set by params.aligner using ext.when defined in
+    Runs only one aligner set by params.aligner using ext.when as defined in
     conf/modules.config.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
 
-include { BWA_MEM } from '../modules/alignment/bwamem/mem/main'
+include { BWA_MEM     } from '../modules/alignment/bwamem/mem/main'
 include { BWAMEM2_MEM } from '../modules/alignment/bwamem2/mem/main'
 include { BWAMEM3_MEM } from '../modules/alignment/bwamem3/mem/main'
 include { MINIBWA_MAP } from '../modules/alignment/minibwa/map/main'

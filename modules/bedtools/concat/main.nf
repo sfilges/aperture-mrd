@@ -16,8 +16,12 @@ process BEDTOOLS_CONCAT {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // Truncate to chrom/start/end: blacklists mix 3- and 4-column BEDs, and a ragged
+    // column count makes the downstream `bedtools sort` abort. The name column is
+    // unused here — BEDTOOLS_MERGE collapses these to plain intervals anyway.
     """
-    cat ${beds} > ${prefix}.concat.bed
+    awk 'BEGIN { FS = OFS = "\\t" } !/^(#|track|browser)/ && NF >= 3 { print \$1, \$2, \$3 }' ${beds} \\
+        > ${prefix}.concat.bed
     """
 
     stub:

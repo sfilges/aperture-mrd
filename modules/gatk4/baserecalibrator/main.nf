@@ -14,7 +14,7 @@ process GATK4_BASERECALIBRATOR {
 
     output:
     tuple val(meta), path("*.table"), emit: table
-    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
+    tuple val("${task.process}"), val('gatk4'), eval("gatk --version 2>&1 | sed -n 's/^.*(GATK) v//p'"), emit: versions_gatk4, topic: versions
 
     script:
     def args = task.ext.args ?: ''

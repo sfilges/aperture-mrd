@@ -13,8 +13,8 @@ process GATK4_MARKDUPLICATES {
     tuple val(meta), path("*.cram"),    emit: cram,  optional: true
     tuple val(meta), path("*.crai"),    emit: crai,  optional: true
     tuple val(meta), path("*.metrics"), emit: metrics
-    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
-    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
+    tuple val("${task.process}"), val('gatk4'), eval("gatk --version 2>&1 | sed -n 's/^.*(GATK) v//p'"), emit: versions_gatk4, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools --version | sed '1!d; s/^samtools //'"), emit: versions_samtools, topic: versions
 
     script:
     def input_list = bam.collect{"--INPUT $it"}.join(' ')

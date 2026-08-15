@@ -1,6 +1,7 @@
 // Mutect2 and post-processing modules
 include { GATK4_MUTECT2 as MUTECT2_SOMATIC } from '../modules/variant_callers/mutect2/main'
 include { GATK4_MERGEVCFS as MERGE_MUTECT2 } from '../modules/gatk4/mergevcfs/main'
+include { GATK4_MERGEVCFS as CONCAT_STRELKA } from '../modules/gatk4/mergevcfs/main'
 include { GATK4_MERGEMUTECTSTATS as MERGEMUTECTSTATS } from '../modules/gatk4/mergemutectstats/main'
 include { GATK4_LEARNREADORIENTATIONMODEL as LEARNREADORIENTATIONMODEL } from '../modules/gatk4/learnreadorientationmodel/main'
 include { GATK4_GETPILEUPSUMMARIES as GETPILEUPSUMMARIES_NORMAL } from '../modules/gatk4/getpileupsummaries/main'
@@ -20,15 +21,17 @@ include { BEDTOOLS_SPLIT } from '../modules/bedtools/split/main'
 
 workflow TN_SOMATIC_SNV_CALLING {
     take:
-    cram_variant_calling_pair
+    cram_variant_calling_pair // [meta, normal_cram, normal_crai, tumor_cram, tumor_crai]
     ch_fasta
     ch_fasta_fai
     dict
     germline_resource
     germline_resource_tbi
-    dbsnp
-    dbsnp_tbi
-    _intervals_bed_all
+    _dbsnp
+    _dbsnp_tbi
+    pon
+    pon_tbi
+    intervals_bed_all
     intervals_bed_gbz_tbi_all
     intervals_bed_split
     intervals_bed_bgz_tbi_split // [meta, intervals.bed, intervals.bed.tbi]
@@ -52,10 +55,10 @@ workflow TN_SOMATIC_SNV_CALLING {
         ch_fasta,
         ch_fasta_fai,
         dict,
-        germline_resource,
+        germline_resource,    // Population vcf of germline sequencing containing allele fractions.
         germline_resource_tbi,
-        [],
-        [],
+        pon,                  // (optional) VCF to filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
+        pon_tbi,
     )
 
     // =========================================================================
@@ -79,13 +82,20 @@ workflow TN_SOMATIC_SNV_CALLING {
 
     // GetPileupSummaries for tumor and normal — needed for contamination estimation
     // Extract tumor and normal CRAMs separately from the pair channel
-    ch_tumor_pileup_input = cram_variant_calling_pair.map { meta, _normal_cram, _normal_crai, tumor_cram, tumor_crai ->
-        [meta, tumor_cram, tumor_crai, []]
-    }
+    // The intervals BED must be supplied explicitly.
+    ch_pileup_intervals = intervals_bed_all.map { _meta, bed -> [bed] }
 
-    ch_normal_pileup_input = cram_variant_calling_pair.map { meta, normal_cram, normal_crai, _tumor_cram, _tumor_crai ->
-        [meta, normal_cram, normal_crai, []]
-    }
+    ch_tumor_pileup_input = cram_variant_calling_pair
+        .map { meta, _normal_cram, _normal_crai, tumor_cram, tumor_crai ->
+            [meta, tumor_cram, tumor_crai]
+        }
+        .combine(ch_pileup_intervals)
+
+    ch_normal_pileup_input = cram_variant_calling_pair
+        .map { meta, normal_cram, normal_crai, _tumor_cram, _tumor_crai ->
+            [meta, normal_cram, normal_crai]
+        }
+        .combine(ch_pileup_intervals)
 
     GETPILEUPSUMMARIES_TUMOR(
         ch_tumor_pileup_input,
@@ -158,11 +168,18 @@ workflow TN_SOMATIC_SNV_CALLING {
         ch_fasta_fai,
     )
 
+    // Gather the per-interval SNV VCFs back into one VCF per pair, mirroring MERGE_MUTECT2.
+    // Without this the scattered chunks reach VCF_CONSENSUS as N separate emissions sharing
+    // one meta, and the downstream join fails on the duplicated key.
+    CONCAT_STRELKA(
+        STRELKA_SOMATIC.out.vcf_snvs.groupTuple(),
+        ch_dict_meta,
+    )
+
     // =========================================================================
     // LOFREQ (deprecated)
     // =========================================================================
 
-    // TODO: Convert CRAM to BAM for LOFREQ_SOMATIC and MUSE_SOMATIC
     //LOFREQ_SOMATIC(
     //    cram_variant_calling_pair,
     //    ch_fasta,
@@ -171,9 +188,9 @@ workflow TN_SOMATIC_SNV_CALLING {
     //    dbsnp_tbi,
     //)
 
-    //
+    // =========================================================================
     // MUSE
-    //
+    // =========================================================================
 
     //MUSE_SOMATIC(
     //    bam_variant_calling_pair,
@@ -189,8 +206,10 @@ workflow TN_SOMATIC_SNV_CALLING {
     mutect2_vcf = FILTERMUTECTCALLS.out.vcf // [meta, filtered.vcf.gz]
     mutect2_tbi = FILTERMUTECTCALLS.out.tbi // [meta, filtered.vcf.gz.tbi]
     mutect2_stats = FILTERMUTECTCALLS.out.stats // [meta, filteringStats.tsv]
-    strelka_snvs_vcf = STRELKA_SOMATIC.out.vcf_snvs // [meta, somatic_snvs.vcf.gz]
-    strelka_snvs_tbi = STRELKA_SOMATIC.out.vcf_snvs_tbi // [meta, somatic_snvs.vcf.gz.tbi]
+    strelka_snvs_vcf = CONCAT_STRELKA.out.vcf // [meta, snvs.vcf.gz] gathered across intervals
+    strelka_snvs_tbi = CONCAT_STRELKA.out.tbi // [meta, snvs.vcf.gz.tbi] gathered across intervals
+    // NOTE: the indel emits are still one per interval chunk -- nothing consumes them yet,
+    // so they need the same groupTuple/CONCAT treatment before they can be used.
     strelka_indels_vcf = STRELKA_SOMATIC.out.vcf_indels // [meta, somatic_indels.vcf.gz]
     strelka_indels_tbi = STRELKA_SOMATIC.out.vcf_indels_tbi // [meta, somatic_indels.vcf.gz.tbi]
     manta_sv_vcf = MANTA_SOMATIC.out.somatic_sv_vcf // [meta, somaticSV.vcf.gz]

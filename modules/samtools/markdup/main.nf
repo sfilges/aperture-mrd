@@ -13,7 +13,7 @@ process SAMTOOLS_MARKDUP {
     tuple val(meta), path("*.cram"),    emit: cram
     tuple val(meta), path("*.crai"),    emit: crai
     tuple val(meta), path("*.metrics"), emit: metrics
-    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools --version | sed '1!d; s/^samtools //'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -22,7 +22,7 @@ process SAMTOOLS_MARKDUP {
     def args   = task.ext.args   ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    samtools collate -O -u --threads ${task.cpus} ${cram} | \\
+    samtools collate -O -u --threads ${task.cpus} --reference ${fasta} ${cram} | \\
         samtools fixmate -m -u --threads ${task.cpus} - - | \\
         samtools sort -u --threads ${task.cpus} - | \\
         samtools markdup \\

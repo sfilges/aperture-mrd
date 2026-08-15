@@ -25,5 +25,13 @@ process BEDTOOLS_SPLIT {
         -n ${count} \\
         -i ${bed} \\
         -p ${prefix}
+
+    # bedtools split -a size (the default) reorders records to balance bases across the
+    # output files, leaving each chromosome scattered over several non-contiguous blocks.
+    # tabix requires a chromosome's records to be contiguous and position-sorted, so sort
+    # each chunk here rather than losing the base-balanced scatter by switching to -a simple.
+    for split_bed in ${prefix}.*.bed; do
+        sort -k1,1 -k2,2n "\$split_bed" -o "\$split_bed"
+    done
     """
 }

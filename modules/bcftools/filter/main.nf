@@ -2,7 +2,7 @@ process BCFTOOLS_FILTER {
     tag "$meta.id"
     label 'process_single'
 
-    container 'biocontainers/bcftools:1.21--h8b25389_1'
+    container 'biocontainers/bcftools:1.24--h487d631_1'
 
     input:
     tuple val(meta), path(vcf)

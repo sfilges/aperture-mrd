@@ -9,7 +9,7 @@ process ENSEMBLVEP_DOWNLOAD {
 
     output:
     tuple val(meta), path(prefix), emit: cache
-    tuple val("${task.process}"), val('ensemblvep'), eval("echo \$(vep --help 2>&1) | sed 's/^.*Versions:.*ensembl-vep : //;s/ .*\$//'"), emit: versions_ensemblvep, topic: versions
+    tuple val("${task.process}"), val('ensemblvep'), eval("vep --help 2>&1 | sed -n 's/^ *ensembl-vep *: *//p'"), emit: versions_ensemblvep, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

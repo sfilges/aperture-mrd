@@ -12,8 +12,8 @@ process BWA_MEM {
     output:
     tuple val(meta), path("*.{bam,cram}"), emit: cram
     tuple val(meta), path("*.{bai,csi,crai}"), emit: index, optional: true
-    tuple val("${task.process}"), val('bwa'), eval("echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact.*\$//'"), emit: versions_bwa, topic: versions
-    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
+    tuple val("${task.process}"), val('bwa'), eval("bwa 2>&1 | sed -n 's/^Version: //p'"), emit: versions_bwa, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools --version | sed '1!d; s/^samtools //'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

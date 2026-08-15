@@ -188,7 +188,7 @@ docker run --rm --gpus all \
 ```
 
 
-
+> Using 2x L4 GPUs
 
 [PB Info 2026-Jul-24 13:07:10] Time spent monitoring (multiple of 10): 3630.426
 [PB Info 2026-Jul-24 13:07:10] bwalib run finished in 3622.398 seconds
@@ -200,3 +200,31 @@ docker run --rm --gpus all \
 [PB Info 2026-Jul-24 13:07:10] ||        Total Time:                          60 minutes 30 seconds        ||
 [PB Info 2026-Jul-24 13:07:10] ------------------------------------------------------------------------------
 
+
+
+
+```bash
+BWAMEM3INDEX=/home/stefan/references/Homo_sapiens/GATK/GRCh38/Sequence/BWAmem3Index/Homo_sapiens_assembly38.fasta
+
+FASTA=/home/stefan/references/Homo_sapiens/GATK/GRCh38/Sequence/WholeGenomeFasta/Homo_sapiens_assembly38.fasta
+
+TEST_R1=/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz
+TEST_R2=/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz
+
+OUTFILE=/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study.cram
+MARKDUPMETRICS=/home/stefan/references/test_data/SRR7890943_WGS.md.metrics
+MARKDUPOUT=/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study.sorted.md.cram
+
+
+# Align and sort
+bwa-mem3 mem -t 12 -K 100000000 -Y -m 10 -y 0 --min-ext-len 30 --bam=0 --skip-contained-ext $BWAMEM3INDEX $TEST_R1 $TEST_R2  | samtools sort -@ 3 --output-fmt cram --reference $FASTA -o $OUTFILE -
+
+# Mark duplicates
+samtools collate -O -u --threads 12 $OUTFILE | \
+samtools fixmate -m -u --threads 12 - - | \
+samtools sort -u --threads 12 - | \
+samtools markdup -f $MARKDUPMETRICS --threads 12 --reference $FASTA --output-fmt cram - $MARKDUPOUT
+
+# Calculate metrics
+riker multi --threads 8 --tools basic isize alignment wgs --reference $FASTA --input $MARKDUPOUT --output SRR7890943_WGS_cross-site_study.sorted.md.cram_riker
+```

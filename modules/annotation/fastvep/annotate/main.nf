@@ -18,7 +18,7 @@ process FASTVEP_ANNOTATE {
     tuple val(meta), path("*.tab.gz")  , optional:true, emit: tab
     tuple val(meta), path("*.json.gz") , optional:true, emit: json
     path "*.summary.html"              , optional:true, emit: report
-    tuple val("${task.process}"), val('ensemblvep'), eval("echo \$(vep --help 2>&1) | sed 's/^.*Versions:.*ensembl-vep : //;s/ .*\$//'"), emit: versions_ensemblvep, topic: versions
+    tuple val("${task.process}"), val('ensemblvep'), eval("vep --help 2>&1 | sed -n 's/^ *ensembl-vep *: *//p'"), emit: versions_ensemblvep, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

@@ -22,11 +22,14 @@ process GATK4_MUTECT2 {
     tuple val(meta), path("*.tbi")        , emit: tbi
     tuple val(meta), path("*.stats")      , emit: stats
     tuple val(meta), path("*.f1r2.tar.gz"), optional:true, emit: f1r2
-    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
+    tuple val("${task.process}"), val('gatk4'), eval("gatk --version 2>&1 | sed -n 's/^.*(GATK) v//p'"), emit: versions_gatk4, topic: versions
 
     script:
     def args             = task.ext.args ?: ''
-    def prefix           = task.ext.prefix ?: "${meta.id}"
+    // When scattered, every chunk shares the same meta.id, so the interval name has to go
+    // into the filename -- otherwise the gather steps (MergeVcfs, MergeMutectStats,
+    // LearnReadOrientationModel) hit an input file name collision staging N identical names.
+    def prefix           = task.ext.prefix ?: (intervals ? "${meta.id}.${intervals.baseName}" : "${meta.id}")
     def interval_command = intervals ? "--intervals $intervals" : ""
     def gr_command       = germline_resource ? "--germline-resource $germline_resource" : ""
     def pon_command      = panel_of_normals ? "--panel-of-normals $panel_of_normals" : ""
@@ -49,8 +52,21 @@ process GATK4_MUTECT2 {
         ${gr_command} \\
         ${pon_command} \\
         --f1r2-tar-gz ${prefix}.f1r2.tar.gz \\
-        --dont-use-soft-clipped-bases \\
         --tmp-dir . \\
         $args
+    """
+
+    stub:
+    def prefix = task.ext.prefix ?: (intervals ? "${meta.id}.${intervals.baseName}" : "${meta.id}")
+    """
+    echo "" | gzip > ${prefix}.vcf.gz
+    touch ${prefix}.vcf.gz.tbi
+    touch ${prefix}.vcf.gz.stats
+    echo "" | gzip > ${prefix}.f1r2.tar.gz
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
+    END_VERSIONS
     """
 }

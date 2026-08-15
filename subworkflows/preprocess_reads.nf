@@ -14,29 +14,28 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { FASTQC as FASTQC_RAW } from '../modules/fastqc/main'
-include { FASTP } from '../modules/fastp/main'
-include { PREPROCESS_ALIGN } from '../subworkflows/preprocess_align'
-include { SAMTOOLS_MERGE } from '../modules/samtools/merge/main'
-include { SAMTOOLS_MARKDUP } from '../modules/samtools/markdup/main'
-include { GATK4_MARKDUPLICATES } from '../modules/gatk4/markduplicates/main'
-include { GATK4_BASERECALIBRATOR } from '../modules/gatk4/baserecalibrator/main'
-include { GATK4_APPLYBQSR } from '../modules/gatk4/applybqsr/main'
+include { FASTQC as FASTQC_RAW         } from '../modules/fastqc/main'
+include { FASTP                        } from '../modules/fastp/main'
+include { PREPROCESS_ALIGN             } from '../subworkflows/preprocess_align'
+include { SAMTOOLS_MERGE               } from '../modules/samtools/merge/main'
+include { SAMTOOLS_MARKDUP             } from '../modules/samtools/markdup/main'
+include { GATK4_MARKDUPLICATES         } from '../modules/gatk4/markduplicates/main'
+include { GATK4_BASERECALIBRATOR       } from '../modules/gatk4/baserecalibrator/main'
+include { GATK4_APPLYBQSR              } from '../modules/gatk4/applybqsr/main'
 include { SAMTOOLS_INDEX as INDEX_CRAM } from '../modules/samtools/index/main'
-include { SAMTOOLS_STATS } from '../modules/samtools/stats/main'
-include { RIKER_MULTI } from '../modules/fulcrum/riker/multi/main'
+include { RIKER_MULTI                  } from '../modules/fulcrum/riker/multi/main'
 
 workflow PREPROCESS_READS {
     take:
-    ch_reads // [meta, [fastq1, fastq2]]
-    ch_fasta // [meta, fasta]
-    ch_fasta_fai // [meta, fai]
-    ch_index // [meta, dir]
-    mode // 'wgs' or 'wes'
-    baits_in // channel: bait intervals — wes only
-    targets_in // channel: target intervals — wes only
-    dict // path(dict) — gatk only
-    known_sites_indels // [path(vcf), ...] — gatk only
+    ch_reads               // [meta, [fastq1, fastq2]]
+    ch_fasta               // [meta, fasta]
+    ch_fasta_fai           // [meta, fai]
+    ch_index               // [meta, dir]
+    mode                   // 'wgs' or 'wes'
+    baits_in               // channel: bait intervals — wes only
+    targets_in             // channel: target intervals — wes only
+    dict                   // path(dict) — gatk only
+    known_sites_indels     // [path(vcf), ...] — gatk only
     known_sites_indels_tbi // [path(tbi), ...] — gatk only
 
     main:

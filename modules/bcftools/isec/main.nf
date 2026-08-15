@@ -2,7 +2,7 @@ process BCFTOOLS_ISEC {
     tag "${meta.id}"
     label 'process_single'
 
-    container 'biocontainers/bcftools:1.21--h8b25389_1'
+    container 'biocontainers/bcftools:1.24--h487d631_1'
 
     input:
     tuple val(meta), path(vcfs), path(tbis)
@@ -19,9 +19,10 @@ process BCFTOOLS_ISEC {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}_consensus"
+    def nfiles = consensus_min_count ? "-n ${consensus_min_count}" : ''
     """
     bcftools isec \\
-        -n ${consensus_min_count} \\
+        ${nfiles} \\
         -w 1 \\
         -Oz -o ${prefix}.isec.vcf.gz \\
         ${args} \\

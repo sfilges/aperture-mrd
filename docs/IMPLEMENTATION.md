@@ -125,7 +125,7 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 | Duplicate marking | **GATK4 MarkDuplicates** | 4.6.x | MIT | Non-UMI samples only; UMI samples use fgumi consensus deduplication |
 | Base recalibration | **GATK4 BQSR** | 4.6.x | MIT | BaseRecalibrator + ApplyBQSR |
 | BAM/CRAM handling | **samtools** | 1.21 | MIT | Index, stats, view, convert |
-| Depth of coverage | **mosdepth** | 0.3.x | MIT | Fast WGS coverage metrics |
+| Depth of coverage | **Riker** | 0.3.x | MIT | Fast WGS coverage metrics |
 
 ### Somatic Variant Calling (Stage 1)
 

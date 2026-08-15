@@ -14,7 +14,6 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-// Enable dsl 2
 nextflow.enable.dsl = 2
 
 /*
@@ -23,22 +22,22 @@ nextflow.enable.dsl = 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { validateParameters } from 'plugin/nf-schema'
-include { samplesheetToList } from 'plugin/nf-schema'
-include { PREPARE_GENOME } from './subworkflows/prepare_genome'
-include { PREPARE_INTERVALS } from './subworkflows/prepare_intervals'
-include { PREPROCESS_READS } from './subworkflows/preprocess_reads'
-include { TN_SOMATIC_SNV_CALLING } from './subworkflows/tn_somatic_snv_calling'
-include { VCF_CONSENSUS } from './subworkflows/vcf_consensus'
-include { VCF_FILTER } from './subworkflows/vcf_filter'
-include { MULTIQC } from './modules/multiqc/main'
+include { validateParameters              } from 'plugin/nf-schema'
+include { samplesheetToList               } from 'plugin/nf-schema'
+include { PREPARE_GENOME                  } from './subworkflows/prepare_genome'
+include { PREPARE_INTERVALS               } from './subworkflows/prepare_intervals'
+include { PREPROCESS_READS                } from './subworkflows/preprocess_reads'
+include { SAMTOOLS_CONVERT as CRAM_TO_BAM } from './modules/samtools/convert/main'
+include { TN_SOMATIC_SNV_CALLING          } from './subworkflows/tn_somatic_snv_calling'
+include { VCF_CONSENSUS                   } from './subworkflows/vcf_consensus'
+include { VCF_FILTER                      } from './subworkflows/vcf_filter'
+include { MULTIQC                         } from './modules/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     DEFINE MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-
 
 workflow {
 
@@ -100,10 +99,28 @@ workflow {
     germline_resource = params.germline_resource ? channel.fromPath(params.germline_resource).collect() : channel.value([])
     germline_resource_tbi = params.germline_resource_tbi ? channel.fromPath("${params.germline_resource_tbi}").collect() : channel.value([])
 
+    // Panel of normals for variant calling (uses 1000 Genomes by default)
+    pon = params.pon ? channel.fromPath("${params.pon}").collect() : channel.value([])
+    pon_tbi = params.pon_tbi ? channel.fromPath("${params.pon_tbi}").collect() : channel.value([])
+
+    // Decide which intervals to use. PREPARE_INTERVALS resolves this itself with
+    // file(), so it must be a path (or null) — passing a channel here makes that
+    // call throw. A null falls back to building intervals from the .fai.
+    def intervals = null
+    if (mode == 'wes') {
+        intervals = params.wes_use_baits_as_intervals ? params.wes_baits : params.wes_targets
+    }
+    else if (mode == 'wgs') {
+        intervals = params.wgs_intervals
+    }
+    else {
+        error("Unknown mode: ${mode} (expected 'wes' or 'wgs')")
+    }
+
     // TODO Intervals file is split up into multiple bed files for scatter/gather & grouping together small intervals
     PREPARE_INTERVALS(
         PREPARE_GENOME.out.fai,
-        params.intervals,
+        intervals,
         [],
     )
 
@@ -123,6 +140,7 @@ workflow {
         log.warn "preprocessing='fast' with aligner='${params.aligner}': fast mode is tuned for bwamem3/minibwa; '${params.aligner}' will run but may be suboptimal."
     }
 
+    // TODO: If preprocessing == 'umi', use the UMI workflow instead
     // FastQC → fastp → alignment → MarkDuplicates → [BQSR] → indexing → QC
     PREPROCESS_READS(
         ch_samplesheet,
@@ -139,6 +157,17 @@ workflow {
 
     ch_cram_for_variant_calling = PREPROCESS_READS.out.cram
     ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_READS.out.reports)
+
+    // TODO: Convert CRAM to BAM for LOFREQ_SOMATIC, MUSE_SOMATIC, CNVKIT, and MSISENSOR2
+    // TODO: Easier to do upstream before merging of tumor and normals, replicate
+    // the cram channel merging for bams and pass bam_variant_calling_pair and
+    // cram_variant_calling_pair to variant calling processes (same as: 
+    // https://github.com/nf-core/sarek/blob/3a6a502a93c3e19d3699fa1be682e801bf2745ad/workflows/sarek/main.nf#L33).
+    // bam_variant_calling = channel.empty()
+    // CRAM_TO_BAM()
+
+
+
 
     //
     // Logic to combine tumor-normal pairs. Does *not* work for tumor only or germline only samples!
@@ -188,6 +217,8 @@ workflow {
         germline_resource_tbi,
         dbsnp,
         dbsnp_tbi,
+        pon,
+        pon_tbi,
         PREPARE_INTERVALS.out.intervals_bed_all,
         PREPARE_INTERVALS.out.intervals_bed_bgz_tbi_all,
         PREPARE_INTERVALS.out.intervals_bed_split,
@@ -195,14 +226,13 @@ workflow {
     )
 
     //
-    // Caller intersection: keep SNVs with >=2/3 caller agreement
+    // Caller intersection: keep SNVs with >=2 caller agreement
     //
     VCF_CONSENSUS(
         TN_SOMATIC_SNV_CALLING.out.mutect2_vcf,
         TN_SOMATIC_SNV_CALLING.out.mutect2_tbi,
         TN_SOMATIC_SNV_CALLING.out.strelka_snvs_vcf,
-        TN_SOMATIC_SNV_CALLING.out.lofreq_vcf,
-        TN_SOMATIC_SNV_CALLING.out.muse_vcf,
+        //TN_SOMATIC_SNV_CALLING.out.muse_vcf,
         PREPARE_GENOME.out.fasta,
         PREPARE_GENOME.out.fai,
     )
@@ -248,7 +278,7 @@ workflow {
         .map { process, tool_versions ->
             "\"${process}\":\n${tool_versions.unique().sort().join('\n')}"
         }
-        .collectFile(storeDir: "${params.outdir}/${workflow.runName}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
+        .collectFile(storeDir: "${params.outdir}/${params.run_id}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
         .set { _ch_collated_versions }
 
     //

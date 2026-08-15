@@ -14,14 +14,18 @@ process GATK4_FILTERMUTECTCALLS {
     tuple val(meta), path("*.vcf.gz")            , emit: vcf
     tuple val(meta), path("*.vcf.gz.tbi")        , emit: tbi
     tuple val(meta), path("*.filteringStats.tsv"), emit: stats
-    tuple val("${task.process}"), val('gatk4'), eval("echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//'"), emit: versions_gatk4, topic: versions
+    tuple val("${task.process}"), val('gatk4'), eval("gatk --version 2>&1 | sed -n 's/^.*(GATK) v//p'"), emit: versions_gatk4, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    // Must not collapse to the name of the staged input VCF (MERGE_MUTECT2 emits ${meta.id}.vcf.gz).
+    // GATK creates the output writer up front, so an identical name makes it truncate its own
+    // input through the staging symlink -- corrupting the upstream task's cached output and
+    // yielding "Processed 0 total variants" before Nextflow reports the output as missing.
+    def prefix = task.ext.prefix ?: "${meta.id}.filtered"
 
     def stats_command           = stats           ? "--stats $stats"                                                             : ''
     def orientationbias_command = orientationbias ? orientationbias.collect{"--orientation-bias-artifact-priors $it"}.join(' ') : ''

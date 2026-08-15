@@ -9,7 +9,7 @@ process BWA_INDEX {
 
     output:
     tuple val(meta), path("bwa"), emit: index
-    tuple val("${task.process}"), val('bwa'), eval("echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact.*\$//'"), emit: versions_bwa, topic: versions
+    tuple val("${task.process}"), val('bwa'), eval("bwa 2>&1 | sed -n 's/^Version: //p'"), emit: versions_bwa, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

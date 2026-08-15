@@ -1,6 +1,6 @@
 process BWAMEM3_MEM {
     // https://bwa-mem3.readthedocs.io/en/v0.6.0/
-    tag "${meta.id}"
+    tag "$meta.id with $task.cpus cores"
     label 'process_high'
 
     container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:391ed2ac52c4a15a'

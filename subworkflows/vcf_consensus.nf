@@ -20,8 +20,8 @@
 
 include { BCFTOOLS_NORM as NORM_MUTECT2 } from '../modules/bcftools/norm/main'
 include { BCFTOOLS_NORM as NORM_STRELKA } from '../modules/bcftools/norm/main'
-include { BCFTOOLS_NORM as NORM_LOFREQ } from '../modules/bcftools/norm/main'
-include { BCFTOOLS_NORM as NORM_MUSE } from '../modules/bcftools/norm/main'
+//include { BCFTOOLS_NORM as NORM_LOFREQ } from '../modules/bcftools/norm/main'
+//include { BCFTOOLS_NORM as NORM_MUSE } from '../modules/bcftools/norm/main'
 include { BCFTOOLS_ISEC } from '../modules/bcftools/isec/main'
 
 workflow VCF_CONSENSUS {
@@ -29,8 +29,8 @@ workflow VCF_CONSENSUS {
     mutect2_vcf // [meta, filtered.vcf.gz]
     _mutect2_tbi // [meta, filtered.vcf.gz.tbi]
     strelka_snvs_vcf // [meta, somatic_snvs.vcf.gz]
-    lofreq_vcf // [meta, [*.vcf.gz]] — multiple LoFreq output VCFs
-    muse_vcf // [meta, [*.vcf.gz]] — multiple LoFreq output VCFs
+    //lofreq_vcf // [meta, [*.vcf.gz]] — multiple LoFreq output VCFs
+    //muse_vcf // [meta, [*.vcf.gz]] — multiple LoFreq output VCFs
     ch_fasta // [meta, fasta]
     _ch_fasta_fai // [meta, fai]
 
@@ -39,14 +39,14 @@ workflow VCF_CONSENSUS {
     //
     // Prepare LoFreq: select somatic_final SNV VCF only (exclude indels and minus-dbsnp)
     //
-    ch_lofreq_snvs = lofreq_vcf.map { meta, vcfs ->
-        def selected = vcfs instanceof List
-            ? vcfs.findAll { f ->
-                f.name.endsWith('somatic_final.snvs.vcf.gz')
-            }
-            : [vcfs]
-        [meta, selected.first()]
-    }
+    //ch_lofreq_snvs = lofreq_vcf.map { meta, vcfs ->
+    //    def selected = vcfs instanceof List
+    //        ? vcfs.findAll { f ->
+    //            f.name.endsWith('somatic_final.snvs.vcf.gz')
+    //        }
+    //        : [vcfs]
+    //    [meta, selected.first()]
+    //}
 
     // TODO: Merge strelka snv + indel vcfs here before normalization or after? Now only includes SNV anyway.
 
@@ -56,8 +56,8 @@ workflow VCF_CONSENSUS {
     //
     NORM_MUTECT2(mutect2_vcf, ch_fasta)
     NORM_STRELKA(strelka_snvs_vcf, ch_fasta)
-    NORM_LOFREQ(ch_lofreq_snvs, ch_fasta)
-    NORM_MUSE(muse_vcf, ch_fasta)
+    //NORM_LOFREQ(ch_lofreq_snvs, ch_fasta)
+    //NORM_MUSE(muse_vcf, ch_fasta)
 
 
     //
@@ -68,12 +68,14 @@ workflow VCF_CONSENSUS {
         .join(NORM_MUTECT2.out.tbi, failOnDuplicate: true, failOnMismatch: true)
         .join(NORM_STRELKA.out.vcf, failOnDuplicate: true, failOnMismatch: true)
         .join(NORM_STRELKA.out.tbi, failOnDuplicate: true, failOnMismatch: true)
-        .join(NORM_LOFREQ.out.vcf, failOnDuplicate: true, failOnMismatch: true)
-        .join(NORM_LOFREQ.out.tbi, failOnDuplicate: true, failOnMismatch: true)
-        .join(NORM_MUSE.out.vcf, failOnDuplicate: true, failOnMismatch: true)
-        .join(NORM_MUSE.out.tbi, failOnDuplicate: true, failOnMismatch: true)
-        .map { meta, m_vcf, m_tbi, s_vcf, s_tbi, l_vcf, l_tbi, mu_vcf, mu_tbi ->
-            [meta, [m_vcf, s_vcf, l_vcf, mu_vcf], [m_tbi, s_tbi, l_tbi, mu_tbi]]
+        //.join(NORM_LOFREQ.out.vcf, failOnDuplicate: true, failOnMismatch: true)
+        //.join(NORM_LOFREQ.out.tbi, failOnDuplicate: true, failOnMismatch: true)
+        //.join(NORM_MUSE.out.vcf, failOnDuplicate: true, failOnMismatch: true)
+        //.join(NORM_MUSE.out.tbi, failOnDuplicate: true, failOnMismatch: true)
+        // Keep this closure's arity in step with the joins above -- re-enabling the LoFreq or
+        // MuSE joins means adding their vcf/tbi parameters back here too.
+        .map { meta, m_vcf, m_tbi, s_vcf, s_tbi ->
+            [meta, [m_vcf, s_vcf], [m_tbi, s_tbi]]
         }
 
     // TODO: Need to make sure that the bcftools outpout maintains mutect2 header and depth/QC values.

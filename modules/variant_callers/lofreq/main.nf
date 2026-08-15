@@ -13,7 +13,7 @@ process LOFREQ_SOMATIC {
 
     output:
     tuple val(meta), path("*.vcf.gz"), emit: vcf
-    tuple val("${task.process}"), val('lofreq'), eval("echo \$(lofreq version 2>&1) | sed 's/^version: //; s/ *commit.*\$//'"), emit: versions_lofreq, topic: versions
+    tuple val("${task.process}"), val('lofreq'), eval("lofreq version 2>&1 | sed -n 's/^version: //p'"), emit: versions_lofreq, topic: versions
 
     script:
     def args = task.ext.args ?: ""

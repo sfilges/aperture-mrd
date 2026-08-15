@@ -23,7 +23,6 @@ process PARABRICKS_FQ2BAM {
     tuple val(meta), path("*.table"), emit: bqsr_table, optional: true
     tuple val(meta), path("*_qc_metrics"), emit: qc_metrics, optional: true
     tuple val(meta), path("*.duplicate-metrics.txt"), emit: duplicate_metrics, optional: true
-    path "compatible_versions.yml", emit: compatible_versions, optional: true
     tuple val("${task.process}"), val('parabricks'), eval("pbrun version | grep -m1 '^pbrun:' | sed 's/^pbrun:[[:space:]]*//'"), topic: versions, emit: versions_parabricks
 
     when:

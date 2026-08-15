@@ -14,7 +14,7 @@ process SAMTOOLS_CONVERT {
     tuple val(meta), path("*.cram") , emit: cram,   optional: true
     tuple val(meta), path("*.bai")  , emit: bai ,   optional: true
     tuple val(meta), path("*.crai") , emit: crai,   optional: true
-    tuple val("${task.process}"), val('samtools'), eval("echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//'"), emit: versions_samtools, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools --version | sed '1!d; s/^samtools //'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
