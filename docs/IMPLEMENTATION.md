@@ -44,7 +44,7 @@ A matched germline sample (buffy coat or adjacent normal tissue) is **always req
 The pipeline separates orchestration (Nextflow) from scientific logic (Python packages):
 
 - **Nextflow pipeline** (`main.nf`, `subworkflows/`, `modules/`): Orchestrates off-the-shelf bioinformatics tools (alignment, variant calling, VCF manipulation) and invokes custom package CLI entry points.
-- **Custom Python packages** (`packages/`): Pip-installable packages for MRDetect-specific logic. Each package has its own `pyproject.toml`, `src/` layout, and `tests/`. This enables independent versioning, unit testing outside Nextflow, and clean Docker images via `pip install`.
+- **Custom Python packages** (separate repositories, e.g. [aperture-snv](https://github.com/sfilges/aperture-snv)): Pip-installable packages for MRDetect-specific logic. Each package has its own `pyproject.toml`, `src/` layout, and `tests/`. This enables independent versioning, unit testing outside Nextflow, and clean Docker images via `pip install`.
 - **Off-the-shelf tool modules** (`modules/`): Atomic Nextflow processes wrapping standard bioinformatics tools. One container per process.
 
 This separation is motivated by the complexity trajectory: Phase 1 has ~3 custom scripts, but Phase 2 introduces CNN models, training pipelines, and multiple feature extraction modules that require proper software engineering practices.
@@ -89,11 +89,6 @@ Aperture-MRD/
 │   ├── cna_integration.nf          # Phase 1→2: aperture-cnv pipeline
 │   ├── fragment_analysis.nf        # Phase 1→2: aperture-fragment pipeline
 │   └── combined_detection.nf       # Score integration & reporting
-├── packages/                        # Custom Python packages (pip-installable)
-│   ├── aperture-snv/               # Phase 1: SNV candidate extraction, SVM, scoring
-│   ├── aperture-cnv/               # Phase 1→2: Coverage normalization, CNA signal
-│   ├── aperture-fragment/          # Phase 1→2: Fragment KDE, motifs, entropy
-│   └── aperture-detect/            # Combined detection, reporting
 └── assets/
     ├── schema_input.json            # Samplesheet validation schema
     ├── samplesheet.csv              # Example samplesheet
@@ -109,7 +104,7 @@ Aperture-MRD/
 - Use process resource labels: `process_single`, `process_low`, `process_medium`, `process_high`
 - Keep resource tuning in `conf/base.config`, **not** hardcoded in processes
 - Capture tool versions via heredoc in a `versions.yml` output
-- Custom package processes install from `packages/` into their container image
+- Custom package processes install the aperture Python packages (from their own repositories) into their container image
 
 ## Tool Selection
 
@@ -153,12 +148,14 @@ All tools are selected for: active maintenance, permissive licensing (commercial
 
 ### Custom Python Packages
 
-| Package | Phase | Dependencies | Purpose |
-| --- | --- | --- | --- |
-| `aperture-snv` | 1 | pysam, scikit-learn, numpy, scipy | SNV candidate extraction, SVM error suppression, binomial TF scoring |
-| `aperture-cnv` | 1→2 | numpy, scipy, scikit-learn | Coverage normalization, CNA signal integration, rPCA denoising, BAF, entropy |
-| `aperture-fragment` | 1→2 | scipy, numpy | Fragment size KDE, end motif profiling, fragment entropy |
-| `aperture-detect` | 1→2 | numpy, scipy | Score integration (Stouffer's method), detection calls, reporting |
+Custom packages live in their own repositories and are installed into container images via `pip install`.
+
+| Package | Repository | Phase | Dependencies | Purpose |
+| --- | --- | --- | --- | --- |
+| `aperture-snv` | [sfilges/aperture-snv](https://github.com/sfilges/aperture-snv) | 1 | pysam, scikit-learn, numpy, scipy | SNV candidate extraction, SVM error suppression, binomial TF scoring |
+| `aperture-cnv` | planned | 1→2 | numpy, scipy, scikit-learn | Coverage normalization, CNA signal integration, rPCA denoising, BAF, entropy |
+| `aperture-fragment` | planned | 1→2 | scipy, numpy | Fragment size KDE, end motif profiling, fragment entropy |
+| `aperture-detect` | planned | 1→2 | numpy, scipy | Score integration (Stouffer's method), detection calls, reporting |
 
 ### UMI Consensus Calling (fgumi)
 
@@ -455,9 +452,8 @@ Extends the Phase 1 read-depth approach with three independent classifiers combi
 
 ## Testing
 
-- Tests reside in `test/` (nf-test) and `packages/*/tests/` (pytest)
+- Tests reside in `test/` (nf-test); Python package tests (pytest) live in each package's own repository
 - Use `nf-test` for pipeline and process testing
-- Use `pytest` for unit testing custom Python packages
 - Use stub runs (`-stub`) for quick structural validation
 - Use pre-commit hooks for linting
 - Use GitHub Actions for CI
