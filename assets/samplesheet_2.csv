@@ -1,0 +1,3 @@
+sample_id,sample,status,fastq_1,fastq_2
+WGS_NS_N_1,WGS_NS_1,0,/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study_1.fastq.gz,/home/stefan/references/test_data/SRR7890943_WGS_cross-site_study_2.fastq.gz
+WGS_NS_T_1,WGS_NS_1,1,/home/stefan/references/test_data/SRR7890893_WGS_cross-site_study_1.fastq.gz,/home/stefan/references/test_data/SRR7890893_WGS_cross-site_study_2.fastq.gz

@@ -101,6 +101,9 @@ workflow {
     germline_resource = params.germline_resource ? channel.fromPath(params.germline_resource).collect() : channel.value([])
     germline_resource_tbi = params.germline_resource_tbi ? channel.fromPath("${params.germline_resource_tbi}").collect() : channel.value([])
 
+    // MSIsensor2 pre-trained models (a directory, not a single file)
+    msisensor2_models = params.msisensor2_models ? channel.fromPath(params.msisensor2_models, type: 'dir').collect() : channel.value([])
+
     // Panel of normals for variant calling (uses 1000 Genomes by default)
     pon = params.pon ? channel.fromPath("${params.pon}").collect() : channel.value([])
     pon_tbi = params.pon_tbi ? channel.fromPath("${params.pon_tbi}").collect() : channel.value([])
@@ -243,7 +246,7 @@ workflow {
     // from the per-sample BAM channel to keep the original sample meta:
     TN_SOMATIC_SIGNATURES(
         ch_bam_for_variant_calling.filter { meta, _bam, _bai -> meta.status == 1 },
-        params.msisensor2_models
+        msisensor2_models
     )
 
     // TODO: Annotate variants with VEP

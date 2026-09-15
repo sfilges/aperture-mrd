@@ -3,7 +3,7 @@ process BWAMEM3_MEM {
     tag "$meta.id with $task.cpus cores"
     label 'process_high'
 
-    container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:6010bb3071cbdd24'
+    container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:479bcd3b71866850'
 
     input:
     tuple val(meta), path(reads)

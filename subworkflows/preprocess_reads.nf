@@ -44,8 +44,10 @@ workflow PREPROCESS_READS {
     //
     // FastQC on raw reads
     //
-    FASTQC_RAW(ch_reads)
-    ch_reports = ch_reports.mix(FASTQC_RAW.out.zip.collect { it -> it[1] }.ifEmpty([]))
+
+    // Skip FASTQC: FASTP and RIKER downstream deliver almost all of the same results and are much faster for WGS
+    //FASTQC_RAW(ch_reads)
+    //ch_reports = ch_reports.mix(FASTQC_RAW.out.zip.collect { it -> it[1] }.ifEmpty([]))
 
     //
     // Trimming with fastp

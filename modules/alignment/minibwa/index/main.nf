@@ -4,7 +4,7 @@ process MINIBWA_INDEX {
     // NOTE minibwa builds an FM-index with libsais; peak memory scales with the reference size.
     memory { 280.MB * Math.ceil(fasta.size() / 10000000) * task.attempt }
 
-    container 'community.wave.seqera.io/library/minibwa:0.2--38d72f7ba96c74d9'
+    container 'community.wave.seqera.io/library/minibwa:0.7--8e8120c7ca8465fb'
 
     input:
     tuple val(meta), path(fasta)

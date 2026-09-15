@@ -3,7 +3,7 @@ process MINIBWA_MAP {
     tag "$meta.id"
     label 'process_high'
 
-    container 'community.wave.seqera.io/library/minibwa_samtools_htslib:6f37dc94f6ac9e37'
+    container 'community.wave.seqera.io/library/htslib_minibwa_samtools:ddb32cd24749ed8a'
 
     input:
     tuple val(meta), path(reads)

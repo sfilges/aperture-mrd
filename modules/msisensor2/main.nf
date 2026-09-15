@@ -6,7 +6,7 @@ process MSISENSOR2_MSI {
 
     input:
     tuple val(meta), path(tumor_bam), path(tumor_bam_index)
-    tuple val(meta2), path(models)
+    path models
 
     output:
     tuple val(meta), path("${prefix}"), emit: msi
