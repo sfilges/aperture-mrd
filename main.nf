@@ -29,9 +29,11 @@ include { PREPARE_INTERVALS               } from './subworkflows/prepare_interva
 include { PREPROCESS_READS                } from './subworkflows/preprocess_reads'
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM } from './modules/samtools/convert/main'
 include { TN_SOMATIC_SNV_CALLING          } from './subworkflows/tn_somatic_snv_calling'
+include { TN_SOMATIC_SIGNATURES           } from './subworkflows/tn_somatic_signatures'
 include { VCF_CONSENSUS                   } from './subworkflows/vcf_consensus'
 include { VCF_FILTER                      } from './subworkflows/vcf_filter'
 include { MULTIQC                         } from './modules/multiqc/main'
+include { pairTumorNormal                 } from './subworkflows/utils'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -158,51 +160,27 @@ workflow {
     ch_cram_for_variant_calling = PREPROCESS_READS.out.cram
     ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_READS.out.reports)
 
-    // TODO: Convert CRAM to BAM for LOFREQ_SOMATIC, MUSE_SOMATIC, CNVKIT, and MSISENSOR2
-    // TODO: Easier to do upstream before merging of tumor and normals, replicate
-    // the cram channel merging for bams and pass bam_variant_calling_pair and
-    // cram_variant_calling_pair to variant calling processes (same as: 
-    // https://github.com/nf-core/sarek/blob/3a6a502a93c3e19d3699fa1be682e801bf2745ad/workflows/sarek/main.nf#L33).
-    // bam_variant_calling = channel.empty()
-    // CRAM_TO_BAM()
-
-
-
+    //
+    // CRAM to BAM conversion for tools that cannot (efficiently) read CRAM:
+    // CNVkit, MSIsensor2, MuSE, LoFreq. Conversion happens per sample, before
+    // pairing, so a normal shared by several tumors is only converted once
+    // (same as: https://github.com/nf-core/sarek/blob/3a6a502a93c3e19d3699fa1be682e801bf2745ad/workflows/sarek/main.nf#L33).
+    // The BAMs are unpublished intermediates; CRAM stays the archival format.
+    //
+    CRAM_TO_BAM(
+        ch_cram_for_variant_calling.map { meta, cram, _crai -> [meta, cram] },
+        PREPARE_GENOME.out.fasta,
+        PREPARE_GENOME.out.fai,
+    )
+    ch_bam_for_variant_calling = CRAM_TO_BAM.out.bam
+        .join(CRAM_TO_BAM.out.bai, failOnDuplicate: true, failOnMismatch: true)
 
     //
-    // Logic to combine tumor-normal pairs. Does *not* work for tumor only or germline only samples!
+    // Combine tumor-normal pairs, in parallel for CRAM and BAM.
+    // Both channels: [meta, normal_file, normal_index, tumor_file, tumor_index]
     //
-
-    //The branch operator forwards each item from a source channel to one of multiple 
-    //output channels, based on a selection criteria.
-    ch_cram_variant_calling_by_status = ch_cram_for_variant_calling.branch { row ->
-        normal: row[0].status == 0
-        tumor: row[0].status == 1
-    }
-
-    // All Germline samples
-    cram_variant_calling_normal_to_cross = ch_cram_variant_calling_by_status.normal.map { meta, cram, crai -> [meta.sample, meta, cram, crai] }
-
-    // All tumor samples
-    cram_variant_calling_pair_to_cross = ch_cram_variant_calling_by_status.tumor.map { meta, cram, crai -> [meta.sample, meta, cram, crai] }
-
-    // Tumor - normal pairs
-    // Use cross to combine normal with all tumor samples, i.e. multi tumor samples from recurrences
-    cram_variant_calling_pair = cram_variant_calling_normal_to_cross
-        .cross(cram_variant_calling_pair_to_cross)
-        .map { normal, tumor ->
-            def meta = [:]
-
-            meta.id = "${tumor[1].id}_vs_${normal[1].id}".toString()
-            meta.normal_id = normal[1].id
-            meta.sample = normal[0]
-            meta.tumor_id = tumor[1].id
-
-            [meta, normal[2], normal[3], tumor[2], tumor[3]]
-        }
-
-    // [meta, normal_cram, normal_crai, tumor_cram, tumor_crai]
-    //cram_variant_calling_pair.view()
+    cram_variant_calling_pair = pairTumorNormal(ch_cram_for_variant_calling)
+    bam_variant_calling_pair = pairTumorNormal(ch_bam_for_variant_calling)
 
     //
     // Run SNV variant calling on tumor-normal pairs
@@ -210,6 +188,7 @@ workflow {
 
     TN_SOMATIC_SNV_CALLING(
         cram_variant_calling_pair,
+        bam_variant_calling_pair,
         PREPARE_GENOME.out.fasta,
         PREPARE_GENOME.out.fai,
         dict,
@@ -257,9 +236,15 @@ workflow {
         ch_blacklists,
     )
 
-    // TODO: CNA calling with CNVkit
+    // TODO: CNA calling with CNVkit — bam_variant_calling_pair matches the
+    // SOMATIC_CNV_CALLING take order [meta, normal_bam, normal_bai, tumor_bam, tumor_bai]
 
-
+    // TODO: Mutational signature detection. MSIsensor2 is tumor-only, so feed it
+    // from the per-sample BAM channel to keep the original sample meta:
+    TN_SOMATIC_SIGNATURES(
+        ch_bam_for_variant_calling.filter { meta, _bam, _bai -> meta.status == 1 },
+        params.msisensor2_models
+    )
 
     // TODO: Annotate variants with VEP
 

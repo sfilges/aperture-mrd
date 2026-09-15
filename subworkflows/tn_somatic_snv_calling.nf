@@ -22,13 +22,14 @@ include { BEDTOOLS_SPLIT } from '../modules/bedtools/split/main'
 workflow TN_SOMATIC_SNV_CALLING {
     take:
     cram_variant_calling_pair // [meta, normal_cram, normal_crai, tumor_cram, tumor_crai]
+    bam_variant_calling_pair // [meta, normal_bam, normal_bai, tumor_bam, tumor_bai] — for MuSE/LoFreq
     ch_fasta
     ch_fasta_fai
     dict
     germline_resource
     germline_resource_tbi
-    _dbsnp
-    _dbsnp_tbi
+    dbsnp
+    dbsnp_tbi
     pon
     pon_tbi
     intervals_bed_all
@@ -180,22 +181,23 @@ workflow TN_SOMATIC_SNV_CALLING {
     // LOFREQ (deprecated)
     // =========================================================================
 
-    //LOFREQ_SOMATIC(
-    //    cram_variant_calling_pair,
-    //    ch_fasta,
-    //    ch_fasta_fai,
-    //    dbsnp,
-    //    dbsnp_tbi,
-    //)
+    LOFREQ_SOMATIC(
+        bam_variant_calling_pair,
+        ch_fasta,
+        ch_fasta_fai,
+        dbsnp,
+        dbsnp_tbi,
+    )
 
     // =========================================================================
     // MUSE
     // =========================================================================
 
-    //MUSE_SOMATIC(
-    //    bam_variant_calling_pair,
-    //    ch_fasta
-    //)
+    MUSE_CALL(
+        bam_variant_calling_pair,
+        ch_fasta,
+        ch_fasta_fai,
+    )
 
     // =========================================================================
     // COLLECT OUTPUTS

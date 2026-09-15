@@ -3,6 +3,7 @@ process SIGPROFILER {
     label 'process_high'
 
     container 'community.wave.seqera.io/library/pip_sigprofilerassignment_sigprofilerextractor_sigprofilermatrixgenerator_pruned:02a3f95da35d8c9a'
+    
     input:
     tuple val(meta), path(tsv_list, stageAs: '*.tsv')
     val(genome)                  // genome version

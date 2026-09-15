@@ -7,7 +7,7 @@ process BWAMEM3_INDEX {
     // 64-bit SA over fwd+rev of hg38 peaks ~72 GiB; scale memory with genome size.
     memory { 280.MB * Math.ceil(fasta.size() / 10000000) * task.attempt }
 
-    container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:391ed2ac52c4a15a'
+    container 'community.wave.seqera.io/library/bwa-mem3_htslib_samtools:6010bb3071cbdd24'
 
     input:
     tuple val(meta), path(fasta)

@@ -5,7 +5,7 @@ process MUSE_CALL {
     container 'community.wave.seqera.io/library/muse:6637291dcbb0bdb8'
 
     input:
-    tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)
+    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
     tuple val(meta2), path(fasta)
     tuple val(meta3), path(fasta_index)
 

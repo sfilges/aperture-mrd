@@ -53,7 +53,7 @@ plasma_1,patient_A,2,/data/plasma_R1.fq.gz,/data/plasma_R2.fq.gz
 
 Processes matched tumor/normal samples to identify high-confidence somatic variants.
 
-- **Preprocessing:** fastp (trimming) → BWA-MEM2 (alignment) → GATK4 MarkDuplicates → GATK4 BQSR.
+- **Preprocessing:** fastp (trimming) → BWA-MEM3 (alignment) → GATK4/samtools MarkDuplicates → (GATK workflow only: GATK4 BQSR).
 - **Somatic Calling:** Ensemble of Mutect2, Strelka2, and LoFreq.
 - **Ensemble Filtering:** Intersection of ≥2/3 callers followed by genomic blacklist filtering (ENCODE, repeats, common variants).
 - **CNA Calling:** CNVkit for tumor/normal copy number analysis.
@@ -86,11 +86,20 @@ Aperture-MRD was originally developed by Stefan Filges.
 
 ## Tool selection
 
-The performance requirements of deep WGS processing require efficient tools. Recenlty, many existing tools have been re-implemented in [Rust](https://lh3.github.io/2026/04/17/the-ai-rewrite-dilemma) to improve performance. 
+The performance requirements of deep WGS processing require efficient tools. Recently, many existing tools have been re-implemented in [Rust](https://lh3.github.io/2026/04/17/the-ai-rewrite-dilemma) to improve performance. 
 
 Wherever possible, the pipeline uses the latest and most efficient tools for each task.
 
 Beyond code improvements for CPU architectures, hardware-accelerated tools (esp. GPU, such as [parabricks](https://github.com/gtc-genomics/parabricks)) are optionally available for certain steps.
+
+### Duplicate marking
+
+The preprocessing workflow is set by `--preprocessing <fast,gatk>`
+
+- `GATK markduplicates`: Used for preprocessing according to GATK best-practices
+- `Samtools markdup`: Faster alternative to GATK (pipeline default)
+
+The default fast workflow uses samtools for duplciate marking and does not perform base quality score recalibration.
 
 ### Genome alignment
 
@@ -106,36 +115,10 @@ from the BWA familiy (set using `--aligner <bwamem,bwamem2,bwamem3,minibwa,parab
 `bwa-mem3` and `minibwa` represent new versions of the bwa aligner, with better support for alternative input data (methylation, long reads), speed improvements, and algorithmic advances. `bwa-mem3`, [using the 
 settings recommended by the maintaniers](https://bwa-mem3.readthedocs.io/en/latest/best-practices/settings-profiles.html) for best speed/accuracy tradeoff, is the default aligner.
 
-### Duplicate marking
-
-The preprocessing workflow is set by `--preprocessing <fast,gatk>`
-
-- `GATK markduplicates`: Used for preprocessing according to GATK best-practices
-- `Samtools markdup`: Faster alternative to GATK (pipeline default)
-
-The default fast workflow uses samtools for duplciate marking and does not perform base quality score recalibration.
-
-
-### Preprocessing
-
-The preprocessing workflow includes:
-
-- Fastp for trimming
-- BWA-MEM2 for alignment
-- GATK4 MarkDuplicates for duplicate removal
-- GATK4 BQSR for base quality score recalibration
-
-Note: Consider replacing GATK with faster alternatives such as parabriicks (if GPU available), or CPU tools such as sambamba, doppelmark, or fastdup.
-
 
 ## Modes
 
 Supports WGS and WES modes (mostly affecting default parameters (which?))
-
-
-
-
-
 
 
 
