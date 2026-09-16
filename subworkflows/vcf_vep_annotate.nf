@@ -6,11 +6,11 @@
 
     The cache is resolved in this order:
 
-      --download_cache      force a fresh download with vep_install, even when a usable
-                            cache is already present.
+      --download_cache      force a fresh download, even when a usable cache is already
+                            present.
       --vep_cache <dir>     use this cache. Must resolve, or the run fails: an explicit
                             path that does not validate is a typo, not a reason to start
-                            a 20 GB download.
+                            a 27 GB download.
       (neither)             reuse the cache an earlier run downloaded into
                             <outdir_cache|outdir/cache>/vep_cache, and download it if
                             there is nothing to reuse.

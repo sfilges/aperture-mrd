@@ -230,7 +230,7 @@
     "vep_cache_preflight_check": {
       "type": "boolean",
       "default": true,
-      "description": "Verify the species/assembly/version exists in the Ensembl CHECKSUMS manifest before downloading."
+      "description": "Verify the species/assembly/version exists in the Ensembl CHECKSUMS manifest before downloading, and verify the downloaded cache tarball against it afterwards."
     },
     "vep_custom_args": {
       "type": "string",
