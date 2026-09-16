@@ -27,4 +27,13 @@ process FULCRUM_FGUMI_DUPLEX {
         ${rejects_command} \\
         ${args}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def rejects_file = keep_rejected ? "touch ${prefix}.rejects.bam" : ''
+    """
+    touch ${prefix}.bam
+    touch ${prefix}.stats.txt
+    ${rejects_file}
+    """
 }

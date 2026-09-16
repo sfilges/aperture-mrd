@@ -30,8 +30,16 @@ process GATK4_MARKDUPLICATES {
         --OUTPUT ${outfile} \\
         --METRICS_FILE ${prefix}.md.metrics
 
-    samtools view --cram --with-header --threads ${task.cpu} --reference ${fasta} --output ${prefix}.sorted.md.cram ${outfile}
+    samtools view --cram --with-header --threads ${task.cpus} --reference ${fasta} --output ${prefix}.sorted.md.cram ${outfile}
     rm ${outfile}
-    samtools index ${prefix}.sorted.md.cram 
+    samtools index ${prefix}.sorted.md.cram
+    """
+
+    stub:
+    def prefix = "${meta.id}"
+    """
+    touch ${prefix}.sorted.md.cram
+    touch ${prefix}.sorted.md.cram.crai
+    touch ${prefix}.md.metrics
     """
 }

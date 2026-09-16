@@ -33,4 +33,12 @@ process BWA_MEM {
         $reads \\
         | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
+
+    stub:
+    def prefix = { params.split_fastq > 1 ? "${meta.id}".concat('.').concat(reads.get(0).name.tokenize('.')[0]) : "${meta.id}.sorted" }()
+    // No .crai: samtools sort is not called with --write-index here, so the optional
+    // index output is empty on a real run too.
+    """
+    touch ${prefix}.cram
+    """
 }

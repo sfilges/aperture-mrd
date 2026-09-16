@@ -35,4 +35,12 @@ process SAMTOOLS_MARKDUP {
 
     samtools index -@${task.cpus} ${prefix}.sorted.md.cram
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.sorted.md.cram
+    touch ${prefix}.sorted.md.cram.crai
+    touch ${prefix}.md.metrics
+    """
 }

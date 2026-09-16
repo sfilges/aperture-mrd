@@ -19,4 +19,10 @@ process FULCRUM_FGUMI_GROUP {
         --threads ${task.cpus} \\
         ${args}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}_grouped.bam
+    """
 }

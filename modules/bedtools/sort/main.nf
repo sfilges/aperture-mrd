@@ -26,4 +26,10 @@ process BEDTOOLS_SORT {
         $args \\
         > "${prefix}.sorted.bed"
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.sorted.bed
+    """
 }

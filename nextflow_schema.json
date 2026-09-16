@@ -214,7 +214,27 @@
       "default": "/home/stefan/Documents/GitHub/aperture-mrd/assets/simple_repeat_regions.sorted2.bed"
     },
     "vep_cache": {
-      "type": "string"
+      "type": "string",
+      "format": "directory-path",
+      "description": "Root of an existing VEP cache, i.e. the directory containing <vep_species>/<vep_cache_version>_<vep_genome>."
+    },
+    "download_cache": {
+      "type": "boolean",
+      "description": "Download the VEP cache with vep_install instead of using --vep_cache. Takes precedence over --vep_cache."
+    },
+    "outdir_cache": {
+      "type": "string",
+      "format": "directory-path",
+      "description": "Where a downloaded cache is published. Defaults to <outdir>/cache."
+    },
+    "vep_cache_preflight_check": {
+      "type": "boolean",
+      "default": true,
+      "description": "Verify the species/assembly/version exists in the Ensembl CHECKSUMS manifest before downloading."
+    },
+    "vep_custom_args": {
+      "type": "string",
+      "description": "Extra flags appended to the vep command line, e.g. --merged or --refseq."
     },
     "vep_cache_version": {
       "type": "string",
@@ -237,8 +257,9 @@
       "default": "vcf"
     },
     "vep_mode": {
-      "type": "string",
-      "default": "ensembl"
+      "type": ["string", "null"],
+      "enum": ["ensembl", "fast", null],
+      "description": "Annotation backend. null disables annotation."
     },
     "interval_padding": {
       "type": "integer",

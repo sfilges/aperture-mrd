@@ -35,4 +35,10 @@ process MINIBWA_MAP {
         ${reads} \\
         | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.cram
+    """
 }

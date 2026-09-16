@@ -24,4 +24,9 @@ process SAMTOOLS_FAIDX {
         $fasta \\
         $args
     """
+
+    stub:
+    """
+    touch ${fasta}.fai
+    """
 }

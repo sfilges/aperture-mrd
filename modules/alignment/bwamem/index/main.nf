@@ -26,4 +26,17 @@ process BWA_INDEX {
         -p bwa/${prefix} \\
         $fasta
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${fasta}"
+    // BWA_MEM locates the index by globbing for *.amb, so the stub has to lay down
+    // the real file set or a mixed stubbed/real run resolves an empty index path.
+    """
+    mkdir bwa
+    touch bwa/${prefix}.amb
+    touch bwa/${prefix}.ann
+    touch bwa/${prefix}.bwt
+    touch bwa/${prefix}.pac
+    touch bwa/${prefix}.sa
+    """
 }

@@ -35,4 +35,16 @@ process BWAMEM3_INDEX {
         ${args} \\
         ${fasta}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    // BWAMEM3_MEM globs for *.amb to find the index prefix.
+    """
+    mkdir bwamem3
+    touch bwamem3/${prefix}.0123
+    touch bwamem3/${prefix}.amb
+    touch bwamem3/${prefix}.ann
+    touch bwamem3/${prefix}.bwt.2bit.64
+    touch bwamem3/${prefix}.pac
+    """
 }

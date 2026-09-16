@@ -39,4 +39,13 @@ process STRELKA_SOMATIC {
     mv strelka/results/variants/somatic.snvs.vcf.gz       ${prefix}.somatic_snvs.vcf.gz
     mv strelka/results/variants/somatic.snvs.vcf.gz.tbi   ${prefix}.somatic_snvs.vcf.gz.tbi
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    echo "" | gzip > ${prefix}.somatic_indels.vcf.gz
+    touch ${prefix}.somatic_indels.vcf.gz.tbi
+    echo "" | gzip > ${prefix}.somatic_snvs.vcf.gz
+    touch ${prefix}.somatic_snvs.vcf.gz.tbi
+    """
 }

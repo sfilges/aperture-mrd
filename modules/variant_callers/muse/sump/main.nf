@@ -28,6 +28,12 @@ process MUSE_SUMP {
         -D $dbsnp \\
         -O "${prefix}.muse.vcf" \\
         -n $task.cpus \\
-        $args        
+        $args
+    """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.muse.vcf
     """
 }

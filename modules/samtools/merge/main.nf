@@ -34,4 +34,13 @@ process SAMTOOLS_MERGE {
         ${prefix}.${file_type} \\
         $input_files
     """
+
+    stub:
+    // prefix is declared without `def` so the output block can see it, same as script:
+    prefix = task.ext.prefix ?: "${meta.id}"
+    def file_type = input_files instanceof List ? input_files[0].getExtension() : input_files.getExtension()
+    // No csi/crai: the real run only writes an index when --write-index is in ext.args.
+    """
+    touch ${prefix}.${file_type}
+    """
 }

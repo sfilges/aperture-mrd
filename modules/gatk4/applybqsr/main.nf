@@ -36,4 +36,10 @@ process GATK4_APPLYBQSR {
         --tmp-dir . \\
         $args
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}.recal"
+    """
+    touch ${prefix}.${cram.getExtension()}
+    """
 }

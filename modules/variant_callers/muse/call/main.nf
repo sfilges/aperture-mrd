@@ -29,4 +29,10 @@ process MUSE_CALL {
         $tumor_bam    \\
         $normal_bam
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.MuSE.txt
+    """
 }

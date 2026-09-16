@@ -37,4 +37,10 @@ process GATK4_BASERECALIBRATOR {
         --tmp-dir . \\
         $args
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.table
+    """
 }

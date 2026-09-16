@@ -38,4 +38,10 @@ process BWAMEM3_MEM {
         ${reads} \\
         | samtools sort -@ ${sort_cpus} ${args2} --reference ${fasta} -O cram -o ${prefix}.cram -
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.cram
+    """
 }

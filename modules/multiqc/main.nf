@@ -24,4 +24,10 @@ process MULTIQC {
         $args \\
         .
     """
+
+    stub:
+    """
+    touch multiqc_report.html
+    mkdir multiqc_data
+    """
 }

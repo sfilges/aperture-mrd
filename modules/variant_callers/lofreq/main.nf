@@ -54,4 +54,15 @@ process LOFREQ_SOMATIC {
 
     $samtools_cram_remove
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    // lofreq somatic treats -o as a filename prefix, not a directory, and concatenates
+    // it directly onto its own suffixes -- hence no separator before 'somatic_final'.
+    """
+    echo "" | gzip > ${prefix}somatic_final.snvs.vcf.gz
+    echo "" | gzip > ${prefix}somatic_final.indels.vcf.gz
+    echo "" | gzip > ${prefix}somatic_final_minus-dbsnp.snvs.vcf.gz
+    echo "" | gzip > ${prefix}somatic_final_minus-dbsnp.indels.vcf.gz
+    """
 }

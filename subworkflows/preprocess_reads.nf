@@ -14,7 +14,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { FASTQC as FASTQC_RAW         } from '../modules/fastqc/main'
+//include { FASTQC as FASTQC_RAW         } from '../modules/fastqc/main'
 include { FASTP                        } from '../modules/fastp/main'
 include { PREPROCESS_ALIGN             } from '../subworkflows/preprocess_align'
 include { SAMTOOLS_MERGE               } from '../modules/samtools/merge/main'

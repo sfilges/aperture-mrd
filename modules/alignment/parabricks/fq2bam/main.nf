@@ -57,4 +57,19 @@ process PARABRICKS_FQ2BAM {
         --monitor-usage \\
         ${args}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def extension = "${output_fmt}"
+    // Mirror the real run's conditional outputs: the recal table only appears when
+    // known_sites is supplied, and the index extension follows output_fmt.
+    def index_ext = extension == 'cram' ? 'crai' : 'bai'
+    def known_sites_output = known_sites ? "touch ${prefix}.table" : ''
+    """
+    touch ${prefix}.${extension}
+    touch ${prefix}.${index_ext}
+    ${known_sites_output}
+    mkdir ${prefix}_qc_metrics
+    touch ${prefix}.duplicate-metrics.txt
+    """
 }

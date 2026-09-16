@@ -54,4 +54,11 @@ process GATK4_FILTERMUTECTCALLS {
         $args
     """
 
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}.filtered"
+    """
+    echo "" | gzip > ${prefix}.vcf.gz
+    touch ${prefix}.vcf.gz.tbi
+    touch ${prefix}.vcf.gz.filteringStats.tsv
+    """
 }

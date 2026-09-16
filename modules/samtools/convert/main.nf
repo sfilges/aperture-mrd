@@ -34,4 +34,13 @@ process SAMTOOLS_CONVERT {
 
     samtools index -@${task.cpus} ${prefix}.${output_extension}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def output_extension = input.getExtension() == "bam" ? "cram" : "bam"
+    def index_extension = output_extension == "bam" ? "bai" : "crai"
+    """
+    touch ${prefix}.${output_extension}
+    touch ${prefix}.${output_extension}.${index_extension}
+    """
 }

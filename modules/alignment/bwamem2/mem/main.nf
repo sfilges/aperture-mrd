@@ -33,4 +33,10 @@ process BWAMEM2_MEM {
         $reads \\
         | samtools sort -@ ${task.cpus} ${fasta} -O cram -o ${prefix}.cram -
     """
+
+    stub:
+    def prefix = { params.split_fastq > 1 ? "${meta.id}".concat('.').concat(reads.get(0).name.tokenize('.')[0]) : "${meta.id}.sorted" }()
+    """
+    touch ${prefix}.cram
+    """
 }

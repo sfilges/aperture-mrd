@@ -34,4 +34,15 @@ process BEDTOOLS_SPLIT {
         sort -k1,1 -k2,2n "\$split_bed" -o "\$split_bed"
     done
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    // Emit exactly `count` chunks using bedtools' own zero-padded naming: the scatter
+    // width downstream is driven by how many BEDs land here, so a single file would
+    // silently collapse the Mutect2 scatter/gather in every stub run.
+    """
+    for i in \$(seq 1 ${count}); do
+        touch ${prefix}.\$(printf '%05d' \$i).bed
+    done
+    """
 }

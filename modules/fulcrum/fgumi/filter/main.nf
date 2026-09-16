@@ -20,7 +20,13 @@ process FULCRUM_FGUMI_FILTER {
     fgumi fastq --input ${consensus_bam} ${args} \
         | bwa-mem3 -t ${task.cpus} -p -K 150000000 -Y ${index} - \
         | fgumi zipper --unmapped ${consensus_bam} --reference ${fasta} \
-        | fgumi filter--ref ${fasta} --min-reads 3 \
+        | fgumi filter --ref ${fasta} --min-reads 3 \
         | fgumi sort --output ${prefix}.filtered.bam --order coordinate --threads 4
+    """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.filtered.bam
     """
 }

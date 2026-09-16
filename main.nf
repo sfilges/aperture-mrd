@@ -30,6 +30,8 @@ include { PREPROCESS_READS                } from './subworkflows/preprocess_read
 include { SAMTOOLS_CONVERT as CRAM_TO_BAM } from './modules/samtools/convert/main'
 include { TN_SOMATIC_SNV_CALLING          } from './subworkflows/tn_somatic_snv_calling'
 include { TN_SOMATIC_SIGNATURES           } from './subworkflows/tn_somatic_signatures'
+include { SOMATIC_CNV_CALLING             } from './subworkflows/somatic_cnv_calling'
+include { VCF_VEP_ANNOTATE                } from './subworkflows/vcf_vep_annotate'
 include { VCF_CONSENSUS                   } from './subworkflows/vcf_consensus'
 include { VCF_FILTER                      } from './subworkflows/vcf_filter'
 include { MULTIQC                         } from './modules/multiqc/main'
@@ -231,6 +233,8 @@ workflow {
         )
         .collect()
 
+    // TODO: strict gnomad AF filter is too strong here, better to be mor permissive here, and
+    // and then filter downstream (perhaps even in manual review post pipeline)
     VCF_FILTER(
         VCF_CONSENSUS.out.compendium_vcf,
         VCF_CONSENSUS.out.compendium_tbi,
@@ -239,9 +243,19 @@ workflow {
         ch_blacklists,
     )
 
+    //
+    // CNV calling
+    //
     // TODO: CNA calling with CNVkit — bam_variant_calling_pair matches the
     // SOMATIC_CNV_CALLING take order [meta, normal_bam, normal_bai, tumor_bam, tumor_bai]
 
+    if(params.cnv_caller == 'cnvkit'){
+        //SOMATIC_CNV_CALLING()
+    }
+
+    //
+    // Mutational signatures
+    //
     // TODO: Mutational signature detection. MSIsensor2 is tumor-only, so feed it
     // from the per-sample BAM channel to keep the original sample meta:
     TN_SOMATIC_SIGNATURES(
@@ -249,8 +263,23 @@ workflow {
         msisensor2_models
     )
 
-    // TODO: Annotate variants with VEP
-
+    //
+    // Variant annotation. Deliberately off by default (params.vep_mode = null): VEP
+    // needs a ~20 GB cache, so opt in with --vep_mode ensembl plus either --vep_cache
+    // or --download_cache.
+    //
+    if (params.vep_mode) {
+        VCF_VEP_ANNOTATE(
+            // meta.variantcaller drives the VEP output prefix and publish path
+            VCF_FILTER.out.vcf.map { meta, vcf -> [meta + [variantcaller: 'consensus'], vcf] },
+            params.vep_genome,
+            params.vep_species,
+            params.vep_cache_version,
+            params.vep_cache,
+            params.download_cache,
+            PREPARE_GENOME.out.fasta,
+        )
+    }
 
     //
     // Collate and save software versions

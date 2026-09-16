@@ -32,4 +32,12 @@ process TABIX_BGZIPTABIX {
         exit 1
     fi
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${input.baseName}"
+    def suffix = input.extension ? ".${input.extension}" : ''
+    """
+    echo "" | gzip > ${prefix}${suffix}.gz
+    touch ${prefix}${suffix}.gz.tbi
+    """
 }

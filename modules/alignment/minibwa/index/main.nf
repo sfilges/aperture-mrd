@@ -28,4 +28,14 @@ process MINIBWA_INDEX {
         $fasta \\
         minibwa/${prefix}
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${fasta}"
+    // MINIBWA_MAP globs for *.l2b to find the index prefix.
+    """
+    mkdir minibwa
+    touch minibwa/${prefix}.l2b
+    touch minibwa/${prefix}.bwt
+    touch minibwa/${prefix}.ann
+    """
 }

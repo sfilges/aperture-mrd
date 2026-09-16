@@ -21,4 +21,14 @@ process FASTQC {
         --threads $task.cpus \\
         $reads
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    // fastqc names outputs after each input read file, so emit one pair per read.
+    """
+    for i in \$(seq 1 ${reads instanceof List ? reads.size() : 1}); do
+        touch ${prefix}_\${i}_fastqc.html
+        touch ${prefix}_\${i}_fastqc.zip
+    done
+    """
 }

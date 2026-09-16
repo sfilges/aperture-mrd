@@ -22,4 +22,10 @@ process FULCRUM_FGUMI_ALIGN {
         | fgumi zipper --bwa-chunk-size 100000000 --threads ${task.cpus} ${args3} --unmapped ${bam} -r ${fasta} \\
         | fgumi sort --max-memory 1G --threads ${task.cpus} ${args4} --output ${prefix}.sorted.bam --order template-coordinate
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.sorted.bam
+    """
 }

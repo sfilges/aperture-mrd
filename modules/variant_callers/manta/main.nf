@@ -57,4 +57,13 @@ process MANTA_SOMATIC {
     mv manta/results/variants/somaticSV.vcf.gz.tbi \\
         ${prefix}.somatic_sv.vcf.gz.tbi
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    for v in candidate_small_indels candidate_sv diploid_sv somatic_sv; do
+        echo "" | gzip > ${prefix}.\$v.vcf.gz
+        touch ${prefix}.\$v.vcf.gz.tbi
+    done
+    """
 }

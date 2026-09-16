@@ -36,4 +36,18 @@ process FASTP {
         ${args} \\
         2> >(tee ${prefix}.fastp.log >&2)
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    // Real gzip members, not touch: these are read by the aligner, so an empty
+    // file would break any run that mixes stubbed and real processes.
+    def merge_fastq = use_merged ? "echo \"\" | gzip > ${prefix}_merged.fastq.gz" : ''
+    """
+    echo "" | gzip > ${prefix}_1_fastp.fastq.gz
+    echo "" | gzip > ${prefix}_2_fastp.fastq.gz
+    ${merge_fastq}
+    touch ${prefix}.fastp.json
+    touch ${prefix}.fastp.html
+    touch ${prefix}.fastp.log
+    """
 }
