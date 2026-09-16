@@ -190,7 +190,6 @@ workflow {
     //
     // Run SNV variant calling on tumor-normal pairs
     //
-
     TN_SOMATIC_SNV_CALLING(
         cram_variant_calling_pair,
         bam_variant_calling_pair,
@@ -233,7 +232,7 @@ workflow {
         )
         .collect()
 
-    // TODO: strict gnomad AF filter is too strong here, better to be mor permissive here, and
+    // TODO: strict gnomad AF filter is too strong here, better to be more permissive here, and
     // and then filter downstream (perhaps even in manual review post pipeline)
     VCF_FILTER(
         VCF_CONSENSUS.out.compendium_vcf,
@@ -264,9 +263,9 @@ workflow {
     )
 
     //
-    // Variant annotation. Deliberately off by default (params.vep_mode = null): VEP
-    // needs a ~20 GB cache, so opt in with --vep_mode ensembl plus either --vep_cache
-    // or --download_cache.
+    // Variant annotation. On by default (params.vep_mode = 'ensembl'); --vep_mode null
+    // turns it off. The ~20 GB cache is reused from --vep_cache or a previous download,
+    // and fetched only when neither is available.
     //
     if (params.vep_mode) {
         VCF_VEP_ANNOTATE(

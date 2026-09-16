@@ -4,13 +4,16 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Annotates VCF files using Ensembl VEP.
 
-    Cache resolution follows nf-core/sarek (subworkflows/nf-core/utils_annotation_cache):
+    The cache is resolved in this order:
 
-      --download_cache      pull the cache with vep_install. One-off; publish it with
-                            --outdir_cache and feed that path back as --vep_cache.
-      --vep_cache <dir>     use an existing cache. This is the production path.
-
-    download_cache wins when both are set, matching sarek's behaviour.
+      --download_cache      force a fresh download with vep_install, even when a usable
+                            cache is already present.
+      --vep_cache <dir>     use this cache. Must resolve, or the run fails: an explicit
+                            path that does not validate is a typo, not a reason to start
+                            a 20 GB download.
+      (neither)             reuse the cache an earlier run downloaded into
+                            <outdir_cache|outdir/cache>/vep_cache, and download it if
+                            there is nothing to reuse.
 
     VEP resolves a cache as <dir_cache>/<species>[_merged|_refseq]/<version>_<assembly>,
     so --vep_cache must point at the ROOT, not at the species or version directory. The
@@ -19,9 +22,8 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { ENSEMBLVEP_DOWNLOAD } from '../modules/annotation/ensemblvep/download/main'
-include { ENSEMBLVEP_VEP } from '../modules/annotation/ensemblvep/vep/main'
-include { FASTVEP_ANNOTATE } from '../modules/annotation/fastvep/annotate/main'
+include { ENSEMBLVEP_DOWNLOAD } from '../modules/ensemblvep/download/main'
+include { ENSEMBLVEP_VEP      } from '../modules/ensemblvep/vep/main'
 
 workflow VCF_VEP_ANNOTATE {
     take:
@@ -39,7 +41,25 @@ workflow VCF_VEP_ANNOTATE {
     // Resolve the cache
     // ──────────────────────────────────────────────────────────────────────
 
-    if (download_cache) {
+    // Where an auto-downloaded cache ends up. Tracks the ENSEMBLVEP_DOWNLOAD publishDir
+    // in conf/modules.config plus the module's own 'vep_cache' prefix.
+    def published_cache = "${params.outdir_cache ?: "${params.outdir}/cache"}/vep_cache"
+
+    def resolved_cache = null
+    if (!download_cache) {
+        if (vep_cache) {
+            resolved_cache = resolveVepCache(vep_cache, vep_genome, vep_species, vep_cache_version, params.vep_custom_args)
+        }
+        else if (vepCacheExists(published_cache, vep_genome, vep_species, vep_cache_version, params.vep_custom_args)) {
+            log.info("VEP: reusing the cache already downloaded to ${published_cache}")
+            resolved_cache = resolveVepCache(published_cache, vep_genome, vep_species, vep_cache_version, params.vep_custom_args)
+        }
+    }
+
+    if (resolved_cache) {
+        ch_vep_cache = channel.value(resolved_cache)
+    }
+    else {
         ch_vep_info = channel.of(
             [
                 ["id": "${vep_cache_version}_${vep_genome}"],
@@ -56,17 +76,6 @@ workflow VCF_VEP_ANNOTATE {
         // and every later sample stalls.
         ch_vep_cache = ENSEMBLVEP_DOWNLOAD.out.cache.map { _meta, cache -> cache }.first()
     }
-    else if (vep_cache) {
-        ch_vep_cache = channel.value(
-            resolveVepCache(vep_cache, vep_genome, vep_species, vep_cache_version, params.vep_custom_args)
-        )
-    }
-    else {
-        error(
-            "VEP annotation is enabled (--vep_mode ${params.vep_mode}) but no cache was given.\n" +
-                "Pass --vep_cache <dir> to use an existing cache, or --download_cache to fetch one."
-        )
-    }
 
     // ──────────────────────────────────────────────────────────────────────
     // Annotate
@@ -82,9 +91,6 @@ workflow VCF_VEP_ANNOTATE {
         fasta,
     )
 
-    // FASTVEP is not implemented yet
-    // FASTVEP_ANNOTATE()
-
     emit:
     vcf = ENSEMBLVEP_VEP.out.vcf // [meta, *_VEP.ann.vcf.gz]
     tab = ENSEMBLVEP_VEP.out.tab // [meta, *_VEP.ann.tab.gz]
@@ -92,9 +98,9 @@ workflow VCF_VEP_ANNOTATE {
     reports = ENSEMBLVEP_VEP.out.report // *.summary.html
 }
 
-// Validate a user-supplied cache root and return the path VEP should be given as
+// Where the cache data sits under a cache root, and what VEP should be handed as
 // --dir_cache. Mirrors nf-core/sarek's UTILS_ANNOTATION_CACHE.
-def resolveVepCache(cache, genome, species, cache_version, custom_args) {
+def vepCacheLayout(cache, genome, species, cache_version, custom_args) {
     // Cloud-hosted caches (the annotation-cache buckets) nest the species directory
     // one level deeper, under <version>_<genome>/. Local caches do not.
     def cache_str = cache.toString()
@@ -105,18 +111,35 @@ def resolveVepCache(cache, genome, species, cache_version, custom_args) {
     def args = custom_args ?: ''
     def species_suffix = args.contains('--merged') ? '_merged' : args.contains('--refseq') ? '_refseq' : ''
 
-    def expected = "${cache_key}${species}${species_suffix}/${cache_version}_${genome}"
-    def full = file("${cache_str}/${expected}", type: 'dir')
+    return [
+        dir_cache: "${cache_str}/${cache_key}",
+        expected: "${cache_key}${species}${species_suffix}/${cache_version}_${genome}",
+    ]
+}
+
+// True when `cache` is a usable cache root. Used to probe for a cache an earlier run
+// downloaded, where a miss means "download it" rather than "fail".
+def vepCacheExists(cache, genome, species, cache_version, custom_args) {
+    def layout = vepCacheLayout(cache, genome, species, cache_version, custom_args)
+    return file("${cache}/${layout.expected}", type: 'dir').exists()
+}
+
+// Validate a cache root and return the path VEP should be given as --dir_cache.
+// Unlike the probe above this fails hard, so a mistyped --vep_cache surfaces as an
+// error instead of silently kicking off a download.
+def resolveVepCache(cache, genome, species, cache_version, custom_args) {
+    def layout = vepCacheLayout(cache, genome, species, cache_version, custom_args)
+    def full = file("${cache}/${layout.expected}", type: 'dir')
 
     if (!full.exists()) {
         error(
             "VEP cache not found: ${full}\n" +
                 "--vep_cache must point at the cache ROOT, which VEP expects to contain\n" +
-                "    ${expected}\n" +
+                "    ${layout.expected}\n" +
                 "Check --vep_cache_version (${cache_version}), --vep_genome (${genome}) and " +
                 "--vep_species (${species}), or run with --download_cache to fetch it."
         )
     }
 
-    return file("${cache_str}/${cache_key}", type: 'dir', checkIfExists: true)
+    return file(layout.dir_cache, type: 'dir', checkIfExists: true)
 }

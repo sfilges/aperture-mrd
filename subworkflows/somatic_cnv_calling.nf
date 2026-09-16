@@ -26,7 +26,7 @@ include { CNVKIT_ACCESS     } from '../modules/cnvkit/access/main'
 include { CNVKIT_BATCH      } from '../modules/cnvkit/batch/main'
 include { CNVKIT_EXPORT_SEG } from '../modules/cnvkit/export/main'
 include { CNVKIT_CALL       } from '../modules/cnvkit/call/main'
-include { PURECN_RUN        } from '../modules/purecn/run/main'
+//include { PURECN_RUN        } from '../modules/purecn/run/main'
 
 workflow SOMATIC_CNV_CALLING {
     take:
@@ -97,45 +97,46 @@ workflow SOMATIC_CNV_CALLING {
     //
     CNVKIT_EXPORT_SEG(CNVKIT_BATCH.out.cns)
 
-    if (params.purecn) {
-        ch_purecn_input = CNVKIT_BATCH.out.cnr
-            .join(CNVKIT_EXPORT_SEG.out.seg, failOnDuplicate: true, failOnMismatch: true)
-            .join(ch_vcf, failOnDuplicate: true, failOnMismatch: true)
+    //if (params.purecn) {
+    //    ch_purecn_input = CNVKIT_BATCH.out.cnr
+    //        .join(CNVKIT_EXPORT_SEG.out.seg, failOnDuplicate: true, failOnMismatch: true)
+    //        .join(ch_vcf, failOnDuplicate: true, failOnMismatch: true)
 
         // The SNP blacklist matters only when neither a matched normal nor a
         // pool of normals is available. This input is assay-level rather than
         // per-sample, so a configured pooled reference is the only signal
         // available here; per-pair matched-normal state cannot be seen.
-        ch_snp_blacklist = !use_reference && params.simple_repeats
-            ? file(params.simple_repeats, checkIfExists: true)
-            : []
+    //    ch_snp_blacklist = !use_reference && params.simple_repeats
+    //        ? file(params.simple_repeats, checkIfExists: true)
+    //        : []
 
-        PURECN_RUN(
-            ch_purecn_input,
-            [[:], []],
-            params.purecn_normaldb ? file(params.purecn_normaldb, checkIfExists: true) : [],
-            params.purecn_mapping_bias ? file(params.purecn_mapping_bias, checkIfExists: true) : [],
-            ch_snp_blacklist,
-            params.purecn_genome,
-        )
+     //   PURECN_RUN(
+     //       ch_purecn_input,
+     //       [[:], []],
+     //       params.purecn_normaldb ? file(params.purecn_normaldb, checkIfExists: true) : [],
+     //       params.purecn_mapping_bias ? file(params.purecn_mapping_bias, checkIfExists: true) : [],
+     //       ch_snp_blacklist,
+     //       params.purecn_genome,
+     //   )
 
         // The curation CSV carries one row per sample with Purity and Ploidy
-        ch_purity_ploidy = PURECN_RUN.out.csv
-            .splitCsv(header: true, elem: 1)
-            .map { meta, row -> [meta, row.Purity, row.Ploidy] }
+    //    ch_purity_ploidy = PURECN_RUN.out.csv
+    //        .splitCsv(header: true, elem: 1)
+    //        .map { meta, row -> [meta, row.Purity, row.Ploidy] }
 
-        ch_call_input = CNVKIT_BATCH.out.cns.join(ch_purity_ploidy, failOnDuplicate: true, failOnMismatch: true)
+    //    ch_call_input = CNVKIT_BATCH.out.cns.join(ch_purity_ploidy, failOnDuplicate: true, failOnMismatch: true)
 
-        ch_purecn_csv = PURECN_RUN.out.csv
-        ch_purecn_seg = PURECN_RUN.out.seg
-    }
-    else {
-        // No purity estimate: CNVKIT_CALL falls back to fixed log2 thresholds
-        ch_call_input = CNVKIT_BATCH.out.cns.map { meta, cns -> [meta, cns, null, null] }
-        ch_purecn_csv = channel.empty()
-        ch_purecn_seg = channel.empty()
-    }
+    //    ch_purecn_csv = PURECN_RUN.out.csv
+    //    ch_purecn_seg = PURECN_RUN.out.seg
+    //}
+    //else {
+    //    // No purity estimate: CNVKIT_CALL falls back to fixed log2 thresholds
+    //    ch_call_input = CNVKIT_BATCH.out.cns.map { meta, cns -> [meta, cns, null, null] }
+    //    ch_purecn_csv = channel.empty()
+    //    ch_purecn_seg = channel.empty()
+    //}
 
+    ch_call_input = CNVKIT_BATCH.out.cns.map { meta, cns -> [meta, cns, null, null] }
     CNVKIT_CALL(ch_call_input)
 
     emit:
@@ -145,6 +146,6 @@ workflow SOMATIC_CNV_CALLING {
     bintest_cns = CNVKIT_BATCH.out.bintest_cns // [meta, .bintest.cns]
     reference_cnn = CNVKIT_BATCH.out.reference_cnn // [meta, .reference.cnn] when built
     seg = CNVKIT_EXPORT_SEG.out.seg // [meta, .seg]  DNAcopy format
-    purecn_csv = ch_purecn_csv // [meta, .csv]  purity/ploidy
-    purecn_seg = ch_purecn_seg // [meta, _dnacopy.seg]
+    //purecn_csv = ch_purecn_csv // [meta, .csv]  purity/ploidy
+    //purecn_seg = ch_purecn_seg // [meta, _dnacopy.seg]
 }

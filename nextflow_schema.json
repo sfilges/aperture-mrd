@@ -216,16 +216,16 @@
     "vep_cache": {
       "type": "string",
       "format": "directory-path",
-      "description": "Root of an existing VEP cache, i.e. the directory containing <vep_species>/<vep_cache_version>_<vep_genome>."
+      "description": "Root of an existing VEP cache, i.e. the directory containing <vep_species>/<vep_cache_version>_<vep_genome>. Unset means reuse a previously downloaded cache, or download one."
     },
     "download_cache": {
       "type": "boolean",
-      "description": "Download the VEP cache with vep_install instead of using --vep_cache. Takes precedence over --vep_cache."
+      "description": "Force a fresh VEP cache download with vep_install, even when a usable cache is already present. Takes precedence over --vep_cache."
     },
     "outdir_cache": {
       "type": "string",
       "format": "directory-path",
-      "description": "Where a downloaded cache is published. Defaults to <outdir>/cache."
+      "description": "Where a downloaded cache is published, and where the pipeline looks for one to reuse. Defaults to <outdir>/cache."
     },
     "vep_cache_preflight_check": {
       "type": "boolean",
@@ -258,7 +258,8 @@
     },
     "vep_mode": {
       "type": ["string", "null"],
-      "enum": ["ensembl", "fast", null],
+      "enum": ["ensembl", null],
+      "default": "ensembl",
       "description": "Annotation backend. null disables annotation."
     },
     "interval_padding": {
